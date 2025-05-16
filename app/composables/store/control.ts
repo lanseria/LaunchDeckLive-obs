@@ -20,7 +20,7 @@ export const useControlStore = defineStore('control', {
     altitude: 0, // in meters
     speed: 0, // in m/s
     isPlaying: false,
-    _intervalId: null as NodeJS.Timeout | null,
+    _intervalId: null as ReturnType<typeof setInterval> | null,
     _broadcastChannel: null as BroadcastChannel | null,
   }),
 
@@ -28,6 +28,7 @@ export const useControlStore = defineStore('control', {
     _initBroadcastChannel() {
       if (import.meta.client && !this._broadcastChannel) {
         this._broadcastChannel = new BroadcastChannel(LAUNCHDECK_CHANNEL_NAME)
+        // eslint-disable-next-line no-console
         console.log('ControlStore: BroadcastChannel initialized')
       }
     },
@@ -36,6 +37,7 @@ export const useControlStore = defineStore('control', {
       if (this._broadcastChannel) {
         this._broadcastChannel.close()
         this._broadcastChannel = null
+        // eslint-disable-next-line no-console
         console.log('ControlStore: BroadcastChannel closed')
       }
     },
@@ -69,6 +71,7 @@ export const useControlStore = defineStore('control', {
         this._broadcastState()
       }, SIMULATION_INTERVAL_MS)
       this._broadcastState() // Broadcast initial start state
+      // eslint-disable-next-line no-console
       console.log('Simulation started')
     },
 
@@ -81,6 +84,7 @@ export const useControlStore = defineStore('control', {
         this._intervalId = null
       }
       this._broadcastState() // Broadcast paused state
+      // eslint-disable-next-line no-console
       console.log('Simulation paused')
     },
 
@@ -91,6 +95,7 @@ export const useControlStore = defineStore('control', {
       this.speed = 0
       // isPlaying is already false from pauseSimulation
       this._broadcastState() // Broadcast reset state
+      // eslint-disable-next-line no-console
       console.log('Simulation reset')
     },
 

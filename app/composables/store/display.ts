@@ -35,6 +35,7 @@ export const useDisplayStore = defineStore('display', {
         this._broadcastChannel.onmessageerror = (event) => {
           console.error('DisplayStore: BroadcastChannel error', event)
         }
+        // eslint-disable-next-line no-console
         console.log('DisplayStore: BroadcastChannel initialized and listening')
       }
     },
@@ -43,6 +44,7 @@ export const useDisplayStore = defineStore('display', {
         this._broadcastChannel.close()
         this._broadcastChannel = null
         this.isConnected = false
+        // eslint-disable-next-line no-console
         console.log('DisplayStore: BroadcastChannel closed')
       }
     },

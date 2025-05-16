@@ -12,16 +12,33 @@ onUnmounted(() => {
   displayStore.dispose()
 })
 
-// Watch for the first time data is received to hide the "Waiting for data" message
-watch(() => displayStore.telemetry.simulationTime, (newTime, oldTime) => {
-  if (!hasReceivedOnce.value && (newTime !== 0 || displayStore.telemetry.altitude !== 0 || displayStore.telemetry.speed !== 0 || displayStore.telemetry.isPlaying)) {
+watch(() => displayStore.telemetry, (newTelemetry, oldTelemetry) => {
+  // Check if we have received meaningful data for the first time
+  if (!hasReceivedOnce.value
+    && (newTelemetry.simulationTime !== 0
+      || newTelemetry.altitude !== 0
+      || newTelemetry.speed !== 0
+      || newTelemetry.isPlaying)) {
     hasReceivedOnce.value = true
   }
-  // If reset to 0 and was previously playing or had data
-  if (newTime === 0 && displayStore.telemetry.altitude === 0 && displayStore.telemetry.speed === 0 && !displayStore.telemetry.isPlaying && hasReceivedOnce.value && (oldTime !== 0 || displayStore.isPlaying)) {
-    // Potentially means a reset from control
+
+  // Logic to detect a reset from control after having received data
+  if (hasReceivedOnce.value
+    && newTelemetry.simulationTime === 0
+    && newTelemetry.altitude === 0
+    && newTelemetry.speed === 0
+    && !newTelemetry.isPlaying // Current state is reset and not playing
+    && ((oldTelemetry?.simulationTime !== 0 // Previous state had data or was playing
+      || oldTelemetry?.altitude !== 0
+      || oldTelemetry?.speed !== 0
+      || oldTelemetry?.isPlaying) || !oldTelemetry) // Or if oldTelemetry was undefined (first run after load)
+  ) {
+    // This condition suggests a reset has occurred on the control panel
+    // You might want to do something specific here if needed,
+    // but for now, hasReceivedOnce logic handles the message visibility.
+    // console.log("Reset detected on display page");
   }
-}, { immediate: true })
+}, { deep: true, immediate: true }) // Use deep: true to watch nested properties of telemetry
 
 watch(() => displayStore.telemetry.isPlaying, (newIsPlaying) => {
   if (newIsPlaying || !newIsPlaying && hasReceivedOnce.value) { // If it starts playing, or if it stops and we had data before
@@ -32,7 +49,6 @@ watch(() => displayStore.telemetry.isPlaying, (newIsPlaying) => {
 
 <template>
   <div
-
     text-white font-mono bg-gray-900 flex flex-col h-screen w-screen select-none items-center justify-center
   >
     <div text-center>
