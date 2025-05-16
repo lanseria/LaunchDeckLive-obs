@@ -20,6 +20,7 @@ export default defineConfig({
     presetAttributify(),
     presetIcons({
       scale: 1.2,
+      warn: true,
     }),
     presetTypography(),
     presetWebFonts({
