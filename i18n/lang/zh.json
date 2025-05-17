@@ -34,13 +34,21 @@
   "standby": "待命中",
   "event": {
     "liftoff": "起飞",
+    "maxq": "最大动压点 (Max Q)",
     "meco": "一级发动机关机 (MECO)",
     "stageSeparation": "级间分离",
     "ses1": "二级发动机开机 (SES-1)",
     "fairingJettison": "抛整流罩",
     "s2ThrottleDown": "二级发动机变推 (60%)",
     "seco1_60": "二级发动机60%工况关机 (SECO-1)",
+    "entryBurnStart": "再入点火开始",
+    "landingBurnStart": "着陆点火开始",
     "payloadSeparation": "星箭分离"
   },
-  "language": "语言"
+  "language": "语言",
+  "dashboardStyle": {
+    "selectTitle": "选择仪表盘样式",
+    "spacexFalcon9": "SpaceX 猎鹰9号",
+    "spaceLen1": "SpaceLen 1号"
+  }
 }

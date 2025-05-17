@@ -2,11 +2,31 @@
 import { useI18n } from '#imports'
 import { useDisplayStore } from '~/composables/store/display'
 
+// 动态导入仪表盘组件
+const SpaceXFalcon9Dashboard = defineAsyncComponent(() => import('~/components/Dashboards/SpaceXFalcon9.vue'))
+const SpaceLen1Dashboard = defineAsyncComponent(() => import('~/components/Dashboards/SpaceLen1.vue'))
+
 const displayStore = useDisplayStore()
 const { t } = useI18n()
 
 const hasReceivedOnce = ref(false)
 const videoRef = useTemplateRef('videoRef')
+
+// 使用 shallowRef 来存储当前仪表盘组件的引用
+const currentDashboardComponent = shallowRef<any>(SpaceXFalcon9Dashboard) // 默认 SpaceX
+
+// 监听 selectedDashboardStyle 的变化来切换组件
+watch(() => displayStore.telemetry.selectedDashboardStyle, (newStyle) => {
+  if (newStyle === 'SpaceXFalcon9') {
+    currentDashboardComponent.value = SpaceXFalcon9Dashboard
+  }
+  else if (newStyle === 'SpaceLen1') {
+    currentDashboardComponent.value = SpaceLen1Dashboard
+  }
+  else {
+    currentDashboardComponent.value = SpaceXFalcon9Dashboard // 默认或回退
+  }
+}, { immediate: true })
 
 onMounted(() => {
   displayStore.initialize()
@@ -122,7 +142,6 @@ watch(() => [
       <video
         ref="videoRef"
         key="launch-video"
-        loop
         muted
         playsinline
         class="h-full w-full left-0 top-0 absolute z-0 object-cover"
@@ -131,7 +150,7 @@ watch(() => [
           // 元数据加载后，如果 controlStore 发送了 syncVideoToTime，可以尝试同步
           if (displayStore.telemetry.syncVideoToTime !== undefined && videoRef && displayStore.telemetry.videoConfig?.type === 'local') {
             // console.log('Video metadata loaded, attempting initial sync to:', displayStore.telemetry.syncVideoToTime);
-            videoRef.currentTime = Math.max(0, displayStore.telemetry.syncVideoToTime);
+            videoRef!.currentTime = Math.max(0, displayStore.telemetry.syncVideoToTime);
             // 如果此时需要播放但浏览器阻止了，isPlaying watch 会处理后续的 .play() 尝试
           }
         }"
@@ -139,65 +158,18 @@ watch(() => [
         <source v-if="currentVideoSource" :src="currentVideoSource" type="video/mp4">
         Your browser does not support the video tag.
       </video>
-
-      <!-- 仪表盘容器 (叠加在视频下方) -->
-      <div class="text-white font-mono p-4 bg-black bg-opacity-70 select-none bottom-0 left-0 right-0 absolute z-10 backdrop-blur-sm lg:p-8 md:p-6">
-        <div class="mb-4 text-center md:mb-6">
-          <h1 class="text-2xl font-bold tracking-wider mb-1 md:text-4xl sm:text-3xl">
-            {{ displayStore.telemetry.missionName || t('displayPanelTitle') }}
-          </h1>
-          <p class="text-sm text-gray-300 mb-2 md:text-lg sm:text-base">
-            {{ displayStore.telemetry.vehicleName || t('standby') }}
-          </p>
-          <p v-if="!displayStore.isConnected || (!hasReceivedOnce && displayStore.isConnected)" class="text-base text-yellow-400 md:text-lg">
-            {{ t('waitingForData') }}
-          </p>
-          <p v-if="displayStore.isConnected && !displayStore.telemetry.isPlaying && hasReceivedOnce" class="text-lg text-red-400 font-semibold md:text-xl">
-            {{ t('simulationPausedStoppedFull') }}
-          </p>
-          <p v-if="displayStore.telemetry.isPlaying && hasReceivedOnce" class="text-lg text-green-400 font-semibold animate-pulse md:text-xl">
-            {{ t('simulationRunningFull') }}
-          </p>
-        </div>
-
-        <div class="mb-4 text-center gap-2 grid grid-cols-3 md:mb-6 md:gap-6 sm:gap-4">
-          <div>
-            <div class="text-xs text-gray-400 uppercase md:text-base sm:text-sm">
-              {{ t('met') }} (T{{ displayStore.telemetry.simulationTime < 0 ? '' : '+' }})
-            </div>
-            <div class="text-2xl font-bold lg:text-5xl md:text-4xl sm:text-3xl">
-              {{ Math.abs(displayStore.telemetry.simulationTime).toFixed(1) }} <span class="text-lg md:text-xl">s</span>
-            </div>
-          </div>
-          <div>
-            <div class="text-xs text-gray-400 uppercase md:text-base sm:text-sm">
-              {{ t('altitude') }}
-            </div>
-            <div class="text-2xl font-bold lg:text-5xl md:text-4xl sm:text-3xl">
-              {{ displayStore.telemetry.altitude.toFixed(0) }} <span class="text-lg md:text-xl">m</span>
-            </div>
-          </div>
-          <div>
-            <div class="text-xs text-gray-400 uppercase md:text-base sm:text-sm">
-              {{ t('speed') }}
-            </div>
-            <div class="text-2xl font-bold lg:text-5xl md:text-4xl sm:text-3xl">
-              {{ displayStore.telemetry.speed.toFixed(0) }} <span class="text-lg md:text-xl">m/s</span>
-            </div>
-          </div>
-        </div>
-
-        <div class="text-center">
-          <div class="text-sm text-gray-400 uppercase md:text-lg sm:text-base">
-            {{ t('currentEvent') }}
-          </div>
-          <div class="text-xl text-cyan-400 font-semibold flex h-8 truncate items-center justify-center md:text-3xl sm:text-2xl md:h-10">
-            {{ translatedCurrentEventName }}
-          </div>
-          <div v-if="displayStore.telemetry.currentEventPayload" class="text-xs text-gray-300 mt-1 p-1 rounded bg-gray-800 bg-opacity-50 max-w-full inline-block truncate sm:text-sm">
-            {{ t('eventData') }} {{ displayStore.telemetry.currentEventPayload }}
-          </div>
-        </div>
+      <!-- 动态仪表盘组件 -->
+      <component
+        :is="currentDashboardComponent"
+        v-if="displayStore.isConnected"
+        :telemetry="displayStore.telemetry"
+        :has-received-once="hasReceivedOnce"
+        :translated-current-event-name="translatedCurrentEventName"
+      />
+      <div v-else class="flex items-center inset-0 justify-center absolute z-10">
+        <p class="text-xl text-yellow-400 font-mono">
+          {{ t('waitingForData') }}
+        </p>
       </div>
 
       <div class="text-xs text-gray-500 opacity-70 transition-opacity bottom-1 right-2 absolute z-20 hover:opacity-100">

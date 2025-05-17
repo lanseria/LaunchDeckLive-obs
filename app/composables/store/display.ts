@@ -1,13 +1,7 @@
+import type { DashboardStyle, VideoConfig } from './control'
 import { defineStore } from 'pinia'
 
-interface VideoConfig {
-  type: 'local' | 'live'
-  source: string
-  startTimeOffset?: number
-  liveStreamStartTime?: string
-}
-
-interface TelemetryData {
+export interface TelemetryData {
   simulationTime: number
   altitude: number
   speed: number
@@ -18,6 +12,7 @@ interface TelemetryData {
   vehicleName: string
   videoConfig?: VideoConfig // 新增
   syncVideoToTime?: number // 新增
+  selectedDashboardStyle: DashboardStyle // 新增
 }
 
 export const useDisplayStore = defineStore('display', {
@@ -33,6 +28,7 @@ export const useDisplayStore = defineStore('display', {
       vehicleName: '',
       videoConfig: undefined, // 初始化
       syncVideoToTime: undefined, // 初始化
+      selectedDashboardStyle: 'SpaceXFalcon9', // 与 controlStore 默认值一致
     } as TelemetryData,
     _broadcastChannel: null as BroadcastChannel | null,
     isConnected: false,

@@ -7,6 +7,9 @@ const SIMULATION_INTERVAL_MS = 100
 const ALTITUDE_FACTOR = 100
 const SPEED_FACTOR = 20
 
+// 定义可选的仪表盘样式
+export type DashboardStyle = 'SpaceXFalcon9' | 'SpaceLen1'
+
 interface MultilingualName {
   en: string
   zh: string
@@ -19,7 +22,7 @@ interface MissionEvent {
   payload?: Record<string, any>
 }
 
-interface VideoConfig { // 新增
+export interface VideoConfig { // 新增
   type: 'local' | 'live'
   source: string
   startTimeOffset?: number // 对于本地视频，相对于 T-0 的偏移 (秒)
@@ -40,6 +43,7 @@ interface TelemetryData {
   currentEventNameKey: string | null
   currentEventPayload?: Record<string, any> | null
   isPlaying: boolean
+  selectedDashboardStyle: DashboardStyle // 新增：当前选择的仪表盘样式
   missionName: string
   vehicleName: string
   videoConfig?: VideoConfig // 将视频配置也广播出去
@@ -62,6 +66,8 @@ export const useControlStore = defineStore('control', () => {
   const currentEventNameKey = ref<string | null>(null)
   const currentEventPayload = ref<Record<string, any> | null>(null)
   const _eventIndex = ref(0)
+
+  const selectedDashboardStyle = ref<DashboardStyle>('SpaceXFalcon9') // 新增：默认样式
 
   const loadedMissionName = computed(() => {
     if (!missionSequenceFile.value)
@@ -104,6 +110,7 @@ export const useControlStore = defineStore('control', () => {
         currentEventNameKey: currentEventNameKey.value,
         currentEventPayload: currentEventPayload.value,
         isPlaying: isPlaying.value,
+        selectedDashboardStyle: selectedDashboardStyle.value, // 发送选择的样式
         missionName: loadedMissionName.value,
         vehicleName: loadedVehicleName.value,
         videoConfig: toRaw(missionSequenceFile.value?.videoConfig), // 传递视频配置
@@ -111,6 +118,14 @@ export const useControlStore = defineStore('control', () => {
       }
       _broadcastChannel.value.postMessage(data)
     }
+  }
+
+  // 新增 action 用于改变仪表盘样式
+  function setDashboardStyle(style: DashboardStyle) {
+    selectedDashboardStyle.value = style
+    _broadcastState({ forceVideoSync: isPlaying.value }) // 广播状态，如果正在播放也同步视频
+    // eslint-disable-next-line no-console
+    console.log('Dashboard style changed to:', style)
   }
 
   function loadMissionSequence(sequenceData: MissionSequenceFile) {
@@ -272,6 +287,7 @@ export const useControlStore = defineStore('control', () => {
 
   function initialize() {
     _initBroadcastChannel()
+    _broadcastState({ forceVideoSync: false }) // 发送包含默认样式在内的初始状态
   }
 
   function dispose() {
@@ -296,6 +312,7 @@ export const useControlStore = defineStore('control', () => {
     currentEventPayload,
     loadedMissionName,
     loadedVehicleName,
+    selectedDashboardStyle, // 暴露给 control.vue 读取
     loadMissionSequence,
     startSimulation,
     pauseSimulation,
@@ -303,5 +320,6 @@ export const useControlStore = defineStore('control', () => {
     seekSimulation,
     initialize,
     dispose,
+    setDashboardStyle, // 暴露给 control.vue 调用
   }
 })

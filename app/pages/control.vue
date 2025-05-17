@@ -1,6 +1,7 @@
 <script setup lang="ts">
+import type { DashboardStyle } from '~/composables/store/control' // 假设你的 store 路径是这样
 import { useI18n } from '#imports' // Auto-imported
-import { useControlStore } from '~/composables/store/control' // 假设你的 store 路径是这样
+import { useControlStore } from '~/composables/store/control'
 
 const controlStore = useControlStore()
 const fileError = ref<string | null>(null)
@@ -13,6 +14,23 @@ interface I18nLocale {
   // Add other properties if your locale objects have them (iso, file, etc.)
 }
 const availableLocales = computed(() => (locales.value as I18nLocale[]).filter(i => i.code))
+// 仪表盘样式选项
+const dashboardStyles: { labelKey: string, value: DashboardStyle }[] = [
+  { labelKey: 'dashboardStyle.spacexFalcon9', value: 'SpaceXFalcon9' },
+  { labelKey: 'dashboardStyle.spaceLen1', value: 'SpaceLen1' },
+]
+
+const currentSelectedStyle = ref<DashboardStyle>(controlStore.selectedDashboardStyle)
+
+watch(currentSelectedStyle, (newStyle) => {
+  controlStore.setDashboardStyle(newStyle)
+})
+// 如果 store 中的值通过其他方式改变（不太可能在这个场景，但作为同步机制）
+watch(() => controlStore.selectedDashboardStyle, (storeStyle) => {
+  if (currentSelectedStyle.value !== storeStyle) {
+    currentSelectedStyle.value = storeStyle
+  }
+})
 
 function handleFileUpload(event: Event) {
   const target = event.target as HTMLInputElement
@@ -80,6 +98,7 @@ function missionHasStartedButBeforeT0(): boolean {
 
 onMounted(() => {
   controlStore.initialize()
+  currentSelectedStyle.value = controlStore.selectedDashboardStyle // 初始化本地 ref
 })
 
 onUnmounted(() => {
@@ -89,6 +108,7 @@ onUnmounted(() => {
 
 <template>
   <div class="font-sans p-8">
+    <!-- 标题和语言/深色模式切换 -->
     <div class="mb-6 flex items-center justify-between">
       <h1 class="text-3xl font-bold">
         {{ t('controlPanelTitle') }}
@@ -105,7 +125,7 @@ onUnmounted(() => {
         <DarkToggle />
       </div>
     </div>
-
+    <!-- 任务时序加载 -->
     <div class="mb-6 p-4 border border-gray-300 rounded">
       <h2 class="text-xl font-semibold mb-2">
         {{ t('missionSequence') }}
@@ -118,6 +138,21 @@ onUnmounted(() => {
       </div>
     </div>
 
+    <!-- 新增：仪表盘样式选择 -->
+    <div class="mb-6 p-4 border border-gray-300 rounded dark:border-gray-600">
+      <h2 class="text-xl font-semibold mb-2">
+        {{ t('dashboardStyle.selectTitle') }}
+      </h2>
+      <select
+        v-model="currentSelectedStyle"
+        class="focus:outline-none text-gray-900 p-2 border border-gray-300 rounded bg-white w-full dark:text-gray-100 dark:border-gray-600 dark:bg-gray-700 focus:ring-2 focus:ring-blue-500"
+      >
+        <option v-for="style in dashboardStyles" :key="style.value" :value="style.value">
+          {{ t(style.labelKey) }}
+        </option>
+      </select>
+    </div>
+    <!-- 控制按钮 -->
     <div class="mb-6 gap-4 grid grid-cols-3">
       <button
         :disabled="controlStore.isPlaying || !controlStore.missionSequenceFile"
@@ -141,7 +176,7 @@ onUnmounted(() => {
         {{ t('reset') }}
       </button>
     </div>
-
+    <!-- 当前模拟状态 -->
     <div class="p-4 border border-gray-300 rounded">
       <h2 class="text-xl font-semibold mb-2">
         {{ t('simulationState') }}

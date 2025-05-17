@@ -34,13 +34,21 @@
   "standby": "Standby",
   "event": {
     "liftoff": "Liftoff",
+    "maxq": "Maximum Dynamic Pressure (Max Q)",
     "meco": "Main Engine Cutoff (MECO)",
     "stageSeparation": "Stage Separation",
     "ses1": "Second Stage Engine Start (SES-1)",
     "fairingJettison": "Fairing Jettison",
     "s2ThrottleDown": "Second Stage Engine Throttle Down (60%)",
     "seco1_60": "Second Stage Engine Cutoff (SECO-1 at 60%)",
+    "entryBurnStart": "Entry Burn Start",
+    "landingBurnStart": "Landing Burn Start",
     "payloadSeparation": "Payload Separation"
   },
-  "language": "Language"
+  "language": "Language",
+  "dashboardStyle": {
+    "selectTitle": "Select Dashboard Style",
+    "spacexFalcon9": "SpaceX Falcon 9",
+    "spaceLen1": "SpaceLen 1"
+  }
 }
