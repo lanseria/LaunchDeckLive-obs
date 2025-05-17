@@ -9,12 +9,12 @@ export default defineNuxtConfig({
     '@nuxtjs/color-mode',
     '@vite-pwa/nuxt',
     '@nuxt/eslint',
+    '@nuxtjs/i18n',
   ],
 
   devtools: {
     enabled: true,
   },
-
   app: {
     head: {
       viewport: 'width=device-width,initial-scale=1',
@@ -70,6 +70,27 @@ export default defineNuxtConfig({
         sortConfigKeys: true,
       },
     },
+  },
+  i18n: {
+    locales: [
+      {
+        code: 'zh',
+        iso: 'zh-CN',
+        name: '中文',
+        file: 'zh.json', // We'll create this file
+      },
+      {
+        code: 'en',
+        iso: 'en-US',
+        name: 'English',
+        file: 'en.json', // We'll create this file
+      },
+    ],
+    defaultLocale: 'zh', // Default language
+    lazy: true, // Load locale files lazily
+    langDir: 'lang/', // Directory for locale files
+    strategy: 'no_prefix', // Or 'prefix_except_default' etc. if you want lang in URL
+    vueI18n: './i18n.config.ts', // for v9 options
   },
 
   pwa,

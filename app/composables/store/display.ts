@@ -1,12 +1,23 @@
 import { defineStore } from 'pinia'
 
-const LAUNCHDECK_CHANNEL_NAME = 'launchdeck-data-channel'
+interface VideoConfig {
+  type: 'local' | 'live'
+  source: string
+  startTimeOffset?: number
+  liveStreamStartTime?: string
+}
 
 interface TelemetryData {
   simulationTime: number
   altitude: number
   speed: number
+  currentEventNameKey: string | null
+  currentEventPayload?: Record<string, any> | null
   isPlaying: boolean
+  missionName: string
+  vehicleName: string
+  videoConfig?: VideoConfig // 新增
+  syncVideoToTime?: number // 新增
 }
 
 export const useDisplayStore = defineStore('display', {
@@ -15,7 +26,13 @@ export const useDisplayStore = defineStore('display', {
       simulationTime: 0,
       altitude: 0,
       speed: 0,
-      isPlaying: false, // To reflect control panel's state
+      currentEventNameKey: null, // Store the key
+      currentEventPayload: null,
+      isPlaying: false,
+      missionName: '',
+      vehicleName: '',
+      videoConfig: undefined, // 初始化
+      syncVideoToTime: undefined, // 初始化
     } as TelemetryData,
     _broadcastChannel: null as BroadcastChannel | null,
     isConnected: false,
@@ -24,19 +41,19 @@ export const useDisplayStore = defineStore('display', {
   actions: {
     _initBroadcastChannel() {
       if (import.meta.client && !this._broadcastChannel) {
-        this._broadcastChannel = new BroadcastChannel(LAUNCHDECK_CHANNEL_NAME)
+        this._broadcastChannel = new BroadcastChannel('launchdeck-data-channel') // Ensure same name
         this._broadcastChannel.onmessage = (event) => {
           const data = event.data as TelemetryData
-          this.telemetry = { ...data } // Update with received data
+          this.telemetry = { ...data } // 更新所有数据
+          // console.log("Display received:", data); // 调试用
           if (!this.isConnected)
             this.isConnected = true
-          // console.log('DisplayStore: Received data', this.telemetry)
         }
         this._broadcastChannel.onmessageerror = (event) => {
           console.error('DisplayStore: BroadcastChannel error', event)
+          this.isConnected = false // Assume connection lost on error
         }
-        // eslint-disable-next-line no-console
-        console.log('DisplayStore: BroadcastChannel initialized and listening')
+        // console.log('DisplayStore: BroadcastChannel initialized and listening')
       }
     },
     _closeBroadcastChannel() {
@@ -44,17 +61,12 @@ export const useDisplayStore = defineStore('display', {
         this._broadcastChannel.close()
         this._broadcastChannel = null
         this.isConnected = false
-        // eslint-disable-next-line no-console
-        console.log('DisplayStore: BroadcastChannel closed')
+        // console.log('DisplayStore: BroadcastChannel closed')
       }
     },
-
-    // Call this when the display component is mounted
     initialize() {
       this._initBroadcastChannel()
     },
-
-    // Call this when the display component is unmounted
     dispose() {
       this._closeBroadcastChannel()
     },
