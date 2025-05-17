@@ -40,7 +40,7 @@
     "ses1": "Second Stage Engine Start (SES-1)",
     "fairingJettison": "Fairing Jettison",
     "s2ThrottleDown": "Second Stage Engine Throttle Down (60%)",
-    "seco1_60": "Second Stage Engine Cutoff (SECO-1 at 60%)",
+    "seco1": "Second Stage Engine Cutoff (SECO-1)",
     "entryBurnStart": "Entry Burn Start",
     "landingBurnStart": "Landing Burn Start",
     "payloadSeparation": "Payload Separation"

@@ -40,7 +40,7 @@
     "ses1": "二级发动机开机 (SES-1)",
     "fairingJettison": "抛整流罩",
     "s2ThrottleDown": "二级发动机变推 (60%)",
-    "seco1_60": "二级发动机60%工况关机 (SECO-1)",
+    "seco1": "二级发动机关机 (SECO-1)",
     "entryBurnStart": "再入点火开始",
     "landingBurnStart": "着陆点火开始",
     "payloadSeparation": "星箭分离"
