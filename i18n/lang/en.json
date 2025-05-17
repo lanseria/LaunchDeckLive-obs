@@ -50,5 +50,14 @@
     "selectTitle": "Select Dashboard Style",
     "spacexFalcon9": "SpaceX Falcon 9",
     "spaceLen1": "SpaceLen 1"
+  },
+  "seekSimulation": {
+    "title": "Seek Simulation (MET)",
+    "placeholder": "Enter seconds (e.g., -10 or 120.5)",
+    "button": "Seek"
+  },
+  "seekError": {
+    "noMission": "Please load a mission sequence file first.",
+    "invalidNumber": "Please enter a valid number for seek time."
   }
 }

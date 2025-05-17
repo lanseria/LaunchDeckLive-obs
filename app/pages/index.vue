@@ -15,6 +15,23 @@ const videoRef = useTemplateRef('videoRef')
 // 使用 shallowRef 来存储当前仪表盘组件的引用
 const currentDashboardComponent = shallowRef<any>(SpaceXFalcon9Dashboard) // 默认 SpaceX
 
+onMounted(() => {
+  displayStore.initialize()
+})
+
+onBeforeUnmount(() => {
+  // eslint-disable-next-line no-console
+  console.log('[INDEX.VUE] BeforeUnmount, disposing displayStore')
+  displayStore.dispose()
+  if (videoRef.value) {
+    videoRef.value.pause() // 确保视频暂停
+    videoRef.value.removeAttribute('src') // 清除 src，阻止后续加载尝试
+    videoRef.value.load() // 可能会触发错误，如果元素已从DOM移除，谨慎使用
+    // 移除所有手动添加的事件监听器
+    // videoRef.value.removeEventListener('canplay', onCanPlayHandlerRef); // 如果你有保存引用的话
+  }
+})
+
 // 监听 selectedDashboardStyle 的变化来切换组件
 watch(() => displayStore.telemetry.selectedDashboardStyle, (newStyle) => {
   if (newStyle === 'SpaceXFalcon9') {
@@ -27,14 +44,6 @@ watch(() => displayStore.telemetry.selectedDashboardStyle, (newStyle) => {
     currentDashboardComponent.value = SpaceXFalcon9Dashboard // 默认或回退
   }
 }, { immediate: true })
-
-onMounted(() => {
-  displayStore.initialize()
-})
-
-onUnmounted(() => {
-  displayStore.dispose()
-})
 
 watch(() => displayStore.telemetry.isPlaying, (newIsPlaying, oldIsPlaying) => {
   if (videoRef.value && displayStore.telemetry.videoConfig?.type === 'local') {
@@ -118,21 +127,34 @@ const currentVideoSource = computed(() => {
     ? displayStore.telemetry.videoConfig.source
     : null // 未来可以是直播流 URL
 })
-
-watch(() => [
-  // ... (hasReceivedOnce 的 watch 依赖)
-  displayStore.telemetry.videoConfig?.source, // 监听视频源变化
-], (newValues) => {
-  // ... (hasReceivedOnce 的逻辑)
-  const newIsConnected = newValues[5] // 假设 isConnected 是第6个元素
-  // ...
-  if (newIsConnected && videoRef.value && displayStore.telemetry.videoConfig?.type === 'local') {
-    if (currentVideoSource.value && videoRef.value.currentSrc !== window.location.origin + currentVideoSource.value) {
-      // console.log("Loading new video source:", currentVideoSource.value)
-      videoRef.value.load() // 如果源变化了，重新加载视频
+// 这个 watch 是关键
+watch(() => displayStore.telemetry.videoConfig?.source, (newSource, oldSource) => {
+  // eslint-disable-next-line no-console
+  console.log('[INDEX.VUE] videoConfig.source watcher triggered. New source:', newSource, 'Old source:', oldSource)
+  if (videoRef.value && newSource && newSource !== oldSource) {
+  // eslint-disable-next-line no-console
+    console.log('[INDEX.VUE] Detected video source change. Current videoRef.currentSrc:', videoRef.value.currentSrc)
+    // 比较 newSource (例如 /videos/new.mp4) 和 videoRef.value.currentSrc (完整的 URL http://localhost:3000/videos/old.mp4)
+    const newFullSourcePath = window.location.origin + newSource
+    if (videoRef.value.currentSrc !== newFullSourcePath) {
+      // eslint-disable-next-line no-console
+      console.log(`[INDEX.VUE] Calling videoRef.load() for new source: ${newSource}`)
+      videoRef.value.src = newSource // 显式设置 src 属性
+      videoRef.value.load() // 然后调用 load()
+    }
+    else {
+      // eslint-disable-next-line no-console
+      console.log('[INDEX.VUE] Video source seems to be the same as currentSrc, not reloading:', newSource)
     }
   }
-}, { deep: true, immediate: true })
+  else if (videoRef.value && !newSource && oldSource) {
+    // 如果新的 source 是 null/undefined (例如从有视频的任务切换到无视频的任务)
+  // eslint-disable-next-line no-console
+    console.log('[INDEX.VUE] Video source removed. Clearing video src.')
+    videoRef.value.removeAttribute('src') // 移除 src
+    videoRef.value.load() // 清空当前视频
+  }
+}, { immediate: false }) // immediate: false 通常更好，等待初始挂载后，或者依赖项实际变化后再触发
 </script>
 
 <template>
@@ -141,8 +163,6 @@ watch(() => [
       <!-- 背景视频 -->
       <video
         ref="videoRef"
-        key="launch-video"
-        muted
         playsinline
         class="h-full w-full left-0 top-0 absolute z-0 object-cover"
         preload="auto"

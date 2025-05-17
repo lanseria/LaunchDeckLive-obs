@@ -40,6 +40,7 @@ export const useDisplayStore = defineStore('display', {
         this._broadcastChannel = new BroadcastChannel('launchdeck-data-channel') // Ensure same name
         this._broadcastChannel.onmessage = (event) => {
           const data = event.data as TelemetryData
+          // console.log('[DISPLAY] Received broadcast. New videoConfig.source:', data.videoConfig?.source)
           this.telemetry = { ...data } // 更新所有数据
           // console.log("Display received:", data); // 调试用
           if (!this.isConnected)

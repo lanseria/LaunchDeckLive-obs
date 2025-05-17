@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { TelemetryData } from '~/composables/store/display'
 import { useI18n } from '#imports'
-import { formatMET } from '~/composables/store/utils/formatters'
+import { formatMET } from '~/composables/utils/formatters'
 
 const props = defineProps<{
   telemetry: TelemetryData

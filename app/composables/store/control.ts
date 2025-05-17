@@ -211,7 +211,6 @@ export const useControlStore = defineStore('control', () => {
     currentEventNameKey.value = null
     currentEventPayload.value = null
     _eventIndex.value = 0
-    currentEventNameKey.value = null // 确保事件名在重置时清除
 
     // 核心修改：设置 simulationTime，使其在视频0秒时对应任务的 videoStartTimeOffset
     if (missionSequenceFile.value?.videoConfig?.type === 'local' && missionSequenceFile.value.videoConfig.startTimeOffset !== undefined) {
@@ -230,7 +229,6 @@ export const useControlStore = defineStore('control', () => {
     currentEventPayload.value = null
     _eventIndex.value = 0
 
-    // 根据新的 simulationTime 更新事件状态 (例如 "Upcoming: ...")
     _primeCurrentEventBasedOnTime() // 新建一个辅助函数来处理
 
     _broadcastState({ forceVideoSync: true }) // 强制视频同步到新的初始点

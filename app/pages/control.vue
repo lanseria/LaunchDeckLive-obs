@@ -22,6 +22,10 @@ const dashboardStyles: { labelKey: string, value: DashboardStyle }[] = [
 
 const currentSelectedStyle = ref<DashboardStyle>(controlStore.selectedDashboardStyle)
 
+// 新增：用于存储跳转时间的 ref
+const seekTimeInput = ref<string>('') // 使用字符串以便输入框处理
+const seekError = ref<string | null>(null)
+
 watch(currentSelectedStyle, (newStyle) => {
   controlStore.setDashboardStyle(newStyle)
 })
@@ -94,6 +98,23 @@ function getTranslatedEventName(key: string | null): string {
 
 function missionHasStartedButBeforeT0(): boolean {
   return controlStore.missionSequenceFile !== null && controlStore.simulationTime < 0
+}
+
+function handleSeek() {
+  seekError.value = null
+  if (!controlStore.missionSequenceFile) {
+    seekError.value = t('seekError.noMission') // i18n: "请先加载任务时序"
+    return
+  }
+
+  const time = Number.parseFloat(seekTimeInput.value)
+  if (Number.isNaN(time)) {
+    seekError.value = t('seekError.invalidNumber') // i18n: "请输入有效的数字"
+    return
+  }
+
+  controlStore.seekSimulation(time)
+  // seekTimeInput.value = ""; // 可选：跳转后清空输入框
 }
 
 onMounted(() => {
@@ -175,6 +196,32 @@ onUnmounted(() => {
       >
         {{ t('reset') }}
       </button>
+    </div>
+    <!-- 新增：快速跳转功能区域 -->
+    <div class="mb-6 p-4 border border-gray-300 rounded dark:border-gray-600">
+      <h2 class="text-xl font-semibold mb-2">
+        {{ t('seekSimulation.title') }}
+      </h2>
+      <div class="flex items-center space-x-2">
+        <input
+          v-model="seekTimeInput"
+          type="number"
+          step="any"
+          class="focus:outline-none text-gray-900 p-2 border border-gray-300 rounded bg-white flex-grow dark:text-gray-100 dark:border-gray-600 dark:bg-gray-700 focus:ring-2 focus:ring-blue-500"
+          :placeholder="t('seekSimulation.placeholder')"
+          @keyup.enter="handleSeek"
+        >
+        <button
+          :disabled="!controlStore.missionSequenceFile"
+          class="text-white px-4 py-2 rounded bg-blue-500 hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+          @click="handleSeek"
+        >
+          {{ t('seekSimulation.button') }}
+        </button>
+      </div>
+      <div v-if="seekError" class="text-sm text-red-500 mt-2">
+        {{ seekError }}
+      </div>
     </div>
     <!-- 当前模拟状态 -->
     <div class="p-4 border border-gray-300 rounded">

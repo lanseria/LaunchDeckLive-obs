@@ -28,9 +28,15 @@ function setScale() {
   style.transform = `scale(${getScale()}) translate(-50%, -50%)`
   console.warn('任你千变万化,我都不会影响性能')
 }
+const debouncedSetScale = debounce(setScale, 200)
 onMounted(() => {
-  setScale()
-  window.onresize = debounce(setScale, 200)
+  debouncedSetScale()
+  window.addEventListener('resize', debouncedSetScale) // 使用 addEventListener
+})
+
+// 关键：在组件卸载前移除事件监听器
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', debouncedSetScale)
 })
 </script>
 

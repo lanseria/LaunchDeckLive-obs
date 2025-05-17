@@ -50,5 +50,14 @@
     "selectTitle": "选择仪表盘样式",
     "spacexFalcon9": "SpaceX 猎鹰9号",
     "spaceLen1": "SpaceLen 1号"
+  },
+  "seekSimulation": {
+    "title": "快速跳转 (MET)",
+    "placeholder": "输入秒数 (例如 -10 或 120.5)",
+    "button": "跳转"
+  },
+  "seekError": {
+    "noMission": "请先加载任务时序文件。",
+    "invalidNumber": "请输入一个有效的数字作为跳转时间。"
   }
 }
