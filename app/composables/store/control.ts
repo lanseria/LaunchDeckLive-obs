@@ -43,11 +43,11 @@ interface TelemetryData {
   currentEventNameKey: string | null
   currentEventPayload?: Record<string, any> | null
   isPlaying: boolean
-  selectedDashboardStyle: DashboardStyle // 新增：当前选择的仪表盘样式
+  selectedDashboardStyle: DashboardStyle
+  allEvents: MissionEvent[] // 新增：任务中的所有事件
   missionName: string
   vehicleName: string
   videoConfig?: VideoConfig // 将视频配置也广播出去
-  // 新增一个字段，用于精确同步视频的播放时间 (特别是seek之后)
   syncVideoToTime?: number // 告诉展示页视频应该播放到哪个时间点 (相对于视频自身的0秒)
 }
 
@@ -115,6 +115,7 @@ export const useControlStore = defineStore('control', () => {
         vehicleName: loadedVehicleName.value,
         videoConfig: toRaw(missionSequenceFile.value?.videoConfig), // 传递视频配置
         syncVideoToTime: syncVideoToTimePayload, // 传递视频同步时间
+        allEvents: toRaw(missionSequenceFile.value?.events) || [], // 发送所有事件
       }
       _broadcastChannel.value.postMessage(data)
     }

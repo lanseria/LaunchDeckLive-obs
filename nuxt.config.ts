@@ -59,7 +59,15 @@ export default defineNuxtConfig({
     },
     prerender: {
       crawlLinks: false,
-      routes: ['/'],
+      routes: ['/', '/control'],
+    },
+  },
+
+  vite: {
+    optimizeDeps: {
+      include: [
+        'es-toolkit',
+      ],
     },
   },
 

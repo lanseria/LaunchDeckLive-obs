@@ -1,6 +1,12 @@
 import type { DashboardStyle, VideoConfig } from './control'
 import { defineStore } from 'pinia'
 
+export interface MissionEventFromControl { // 与 controlStore 中的 MissionEvent 结构一致
+  time: number
+  eventNameKey: string
+  payload?: Record<string, any>
+}
+
 export interface TelemetryData {
   simulationTime: number
   altitude: number
@@ -10,9 +16,10 @@ export interface TelemetryData {
   isPlaying: boolean
   missionName: string
   vehicleName: string
-  videoConfig?: VideoConfig // 新增
-  syncVideoToTime?: number // 新增
-  selectedDashboardStyle: DashboardStyle // 新增
+  videoConfig?: VideoConfig
+  syncVideoToTime?: number
+  selectedDashboardStyle: DashboardStyle
+  allEvents: MissionEventFromControl[] // 新增
 }
 
 export const useDisplayStore = defineStore('display', {
@@ -28,6 +35,7 @@ export const useDisplayStore = defineStore('display', {
       vehicleName: '',
       videoConfig: undefined, // 初始化
       syncVideoToTime: undefined, // 初始化
+      allEvents: [], // 初始化为空数组
       selectedDashboardStyle: 'SpaceXFalcon9', // 与 controlStore 默认值一致
     } as TelemetryData,
     _broadcastChannel: null as BroadcastChannel | null,

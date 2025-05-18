@@ -1,7 +1,7 @@
 {
   "type": "module",
   "private": true,
-  "packageManager": "pnpm@10.8.0",
+  "packageManager": "pnpm@10.11.0",
   "scripts": {
     "build": "nuxi build",
     "dev:pwa": "VITE_PLUGIN_PWA=true nuxi dev",
@@ -28,7 +28,7 @@
     "@vite-pwa/nuxt": "catalog:build",
     "@vueuse/core": "catalog:frontend",
     "@vueuse/nuxt": "catalog:build",
-    "es-toolkit": "^1.37.2",
+    "es-toolkit": "^1.38.0",
     "eslint": "catalog:dev",
     "eslint-plugin-format": "catalog:dev",
     "nuxt": "catalog:build",

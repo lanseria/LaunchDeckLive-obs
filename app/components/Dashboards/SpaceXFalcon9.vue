@@ -2,11 +2,11 @@
 import type { TelemetryData } from '~/composables/store/display'
 import { useI18n } from '#imports'
 import { formatMET } from '~/composables/utils/formatters'
+import EventTimeline from './Common/EventTimeline.vue' // 引入时间轴组件
 
 const props = defineProps<{
   telemetry: TelemetryData
   hasReceivedOnce: boolean
-  translatedCurrentEventName: string
 }>()
 
 const { t } = useI18n()
@@ -66,20 +66,16 @@ const formattedMET = computed(() => formatMET(props.telemetry.simulationTime))
         </div>
       </div>
 
-      <!-- 右列: 当前事件 (未来可以扩展为事件轴) -->
-      <div class="text-right">
-        <div class="text-xs text-gray-400 uppercase md:text-sm">
-          {{ t('currentEvent') }}
-        </div>
-        <div class="text-lg text-cyan-400 font-semibold flex flex-col h-auto min-h-[1.5em] items-end justify-center lg:text-2xl md:text-xl md:min-h-[1.8em]">
-          <!-- 调整高度和对齐  -->
-          <span class="max-w-full truncate">{{ props.translatedCurrentEventName }}</span>
-        </div>
-        <div v-if="props.telemetry.currentEventPayload" class="text-xxs text-gray-300 mt-1 text-right max-w-full truncate md:text-xs">
-          <!-- 调整字体大小 -->
-          <!-- {{ t('eventData') }} {{ currentEventPayload }} -->
-          <!-- SpaceX 通常不直接显示 payload -->
-        </div>
+      <!-- 右列: 事件时间轴 -->
+      <div>
+        <!-- 增加一些上边距对齐 -->
+        <EventTimeline
+          :events="telemetry.allEvents"
+          :current-time="telemetry.simulationTime"
+          :max-visible-events="3"
+        />
+        <!--  例如，最多显示7条事件 -->
+        <!-- 不再需要单独显示 currentEventName 和 payload，时间轴组件会处理 -->
       </div>
     </div>
   </div>
