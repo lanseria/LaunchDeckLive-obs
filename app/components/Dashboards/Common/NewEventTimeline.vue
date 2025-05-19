@@ -64,10 +64,19 @@ function getEventTopPosition(eventTime: number): number {
     :style="{ height: `${effectiveTimelineHeight}px`, overflow: 'hidden' }"
   >
     <!-- 标题 -->
-    <div class="text-gray-400 mb-1 px-1 text-right uppercase left-0 right-0 top-0 absolute z-20 md:mb-2">
+    <!-- <div class="text-gray-400 mb-1 px-1 text-right uppercase left-0 right-0 top-0 absolute z-20 md:mb-2">
       {{ t('missionTimelineTitle') }}
+    </div> -->
+    <!-- 可选的垂直线 -->
+    <div>
+      <div
+        class="bg-cyan-400 opacity-50 w-2px bottom-1/2 right-11px top-0 absolute z-1"
+        aria-hidden="true"
+      /><div
+        class="bg-gray-600 opacity-50 w-2px bottom-0 right-11px top-1/2 absolute"
+        aria-hidden="true"
+      />
     </div>
-
     <!-- 当前时间焦点线 -->
     <!-- <div
       class="current-time-line bg-red-500 h-px w-full left-0 right-0 absolute z-10"
