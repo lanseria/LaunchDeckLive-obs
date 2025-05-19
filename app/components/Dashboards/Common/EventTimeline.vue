@@ -1,10 +1,9 @@
 <script setup lang="ts">
-import type { MissionEventFromControl } from '~/composables/store/display'
 import { useI18n } from '#imports'
 import { formatMET } from '~/composables/utils/formatters'
 
 const props = defineProps<{
-  events: MissionEventFromControl[]
+  events: MissionEvent[]
   currentTime: number // 当前的 simulationTime (MET)
   maxVisibleEvents?: number // 可选：限制显示事件的数量
 }>()
@@ -104,7 +103,7 @@ function getEventStatus(eventTime: number, eventIndex: number): 'past' | 'curren
       >
         <!-- 事件点 -->
         <div
-          class="top-1/2 -translate-y-1/2 rounded-full h-1.5 w-1.5 right-[-12px] absolute md:h-2 md:w-2 md:right-[-16px]"
+          class="rounded-full h-1.5 w-1.5 right-[-12px] top-1/2 absolute md:h-2 md:w-2 -translate-y-1/2 md:right-[-16px]"
           :class="{
             'bg-gray-500': getEventStatus(event.time, props.events.findIndex(e => e.eventNameKey === event.eventNameKey && e.time === event.time)) === 'past',
             'bg-cyan-400 ring-1 ring-cyan-300 scale-125': getEventStatus(event.time, props.events.findIndex(e => e.eventNameKey === event.eventNameKey && e.time === event.time)) === 'current',

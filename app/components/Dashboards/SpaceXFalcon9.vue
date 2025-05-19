@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import type { TelemetryData } from '~/composables/store/display'
 import { useI18n } from '#imports'
 import { formatMET } from '~/composables/utils/formatters'
-import EventTimeline from './Common/EventTimeline.vue' // 引入时间轴组件
+// import EventTimeline from './Common/EventTimeline.vue' // 引入时间轴组件
+import NewEventTimeline from './Common/NewEventTimeline.vue' // 引入时间轴组件
 
 const props = defineProps<{
   telemetry: TelemetryData
@@ -69,10 +69,17 @@ const formattedMET = computed(() => formatMET(props.telemetry.simulationTime))
       <!-- 右列: 事件时间轴 -->
       <div>
         <!-- 增加一些上边距对齐 -->
-        <EventTimeline
+        <!-- <EventTimeline
           :events="telemetry.allEvents"
           :current-time="telemetry.simulationTime"
           :max-visible-events="3"
+        /> -->
+        <NewEventTimeline
+          :events="telemetry.allEvents"
+          :current-time="telemetry.simulationTime"
+          :pixels-per-second="5"
+          :focus-line-from-top="100"
+          :timeline-height="200"
         />
         <!--  例如，最多显示7条事件 -->
         <!-- 不再需要单独显示 currentEventName 和 payload，时间轴组件会处理 -->
