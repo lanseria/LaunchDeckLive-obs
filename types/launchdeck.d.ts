@@ -48,18 +48,4 @@ declare global {
   }
 }
 
-// 如果你想在模块内部导入这些类型（例如在非 .vue 或 .ts 文件中，或者为了更明确），
-// 你也可以像下面这样导出它们，然后在需要的地方 import。
-// 但对于 .vue 和 .ts 文件，上面的 declare global 应该足够了。
-/*
-export type DashboardStyle = 'SpaceXFalcon9' | 'SpaceLen1';
-export interface MultilingualName { ... }
-export interface MissionEvent { ... }
-export interface VideoConfig { ... }
-export interface MissionSequenceFile { ... }
-export interface TelemetryData { ... }
-*/
-
-// 为了确保这个文件被 TypeScript 识别为一个模块（如果里面没有任何 import/export）
-// 可以添加一个空的 export {}
 export {}

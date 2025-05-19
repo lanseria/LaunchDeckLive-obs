@@ -4,6 +4,7 @@ import { useDisplayStore } from '~/composables/store/display'
 
 // 动态导入仪表盘组件
 const SpaceXFalcon9Dashboard = defineAsyncComponent(() => import('~/components/Dashboards/SpaceXFalcon9.vue'))
+const SpaceXArcDisplayDashboard = defineAsyncComponent(() => import('~/components/Dashboards/SpaceXArcDisplay.vue')) // 指向新的 SVG 组件
 const SpaceLen1Dashboard = defineAsyncComponent(() => import('~/components/Dashboards/SpaceLen1.vue'))
 
 const displayStore = useDisplayStore()
@@ -14,7 +15,7 @@ const videoRef = useTemplateRef('videoRef')
 const showPlayButton = ref(false) // 用于处理有声自动播放失败
 
 // 使用 shallowRef 来存储当前仪表盘组件的引用
-const currentDashboardComponent = shallowRef<any>(SpaceXFalcon9Dashboard) // 默认 SpaceX
+const currentDashboardComponent = shallowRef<any>(SpaceXArcDisplayDashboard) // 默认 SpaceX
 
 // --- 视频同步优化相关状态 ---
 const isSeeking = ref(false) // 寻址状态标志
@@ -154,7 +155,7 @@ function seekVideo(targetTime: number) {
 // 监听 selectedDashboardStyle 的变化来切换组件
 watch(() => displayStore.telemetry.selectedDashboardStyle, (newStyle) => {
   if (newStyle === 'SpaceXFalcon9') {
-    currentDashboardComponent.value = SpaceXFalcon9Dashboard
+    currentDashboardComponent.value = SpaceXArcDisplayDashboard
   }
   else if (newStyle === 'SpaceLen1') {
     currentDashboardComponent.value = SpaceLen1Dashboard
