@@ -37,6 +37,9 @@ export default defineNuxtConfig({
   colorMode: {
     classSuffix: '',
   },
+  devServer: {
+    port: 10630,
+  },
 
   future: {
     compatibilityVersion: 4,
@@ -49,7 +52,6 @@ export default defineNuxtConfig({
     renderJsonPayloads: true,
     typedPages: true,
   },
-
   compatibilityDate: '2024-08-14',
 
   nitro: {
