@@ -28,6 +28,7 @@ let onCanPlayHandler: (() => void) | null = null
 // ---
 
 onMounted(() => {
+  // eslint-disable-next-line no-console
   console.log('[INDEX.VUE] Mounted, initializing displayStore')
   displayStore.initialize()
   if (videoRef.value) {
@@ -133,6 +134,7 @@ function seekVideo(targetTime: number) {
     return
   }
 
+  // eslint-disable-next-line no-console
   console.log(`[VIDEO CONTROL] Requesting seek to: ${targetTime} (current: ${videoRef.value.currentTime.toFixed(2)})`)
   isSeeking.value = true
   videoRef.value.currentTime = targetTime
@@ -186,6 +188,7 @@ watch(() => displayStore.telemetry.syncVideoToTime, (newVideoTime) => {
         }
         onCanPlayHandler = () => {
           if (videoRef.value && newVideoTime !== undefined) {
+            // eslint-disable-next-line no-console
             console.log(`[VIDEO EVENT] Syncing video (onCanPlay) to: ${newVideoTime}`)
             seekVideo(newVideoTime) // 使用 seekVideo
             if (onCanPlayHandler && videoRef.value) { // 再次检查确保移除正确的引用
@@ -207,6 +210,7 @@ watch(() => displayStore.telemetry.videoConfig?.source, (newSource, oldSource) =
       const newFullSourcePath = window.location.origin + newSource
       // 只有当 src 真的变了，或者 video 元素还没有 src 时才更新
       if (videoRef.value.currentSrc !== newFullSourcePath || !videoRef.value.hasAttribute('src')) {
+        // eslint-disable-next-line no-console
         console.log(`[INDEX.VUE] Setting new video source and loading: ${newSource}`)
         videoRef.value.src = newSource
         videoRef.value.load()
@@ -217,6 +221,7 @@ watch(() => displayStore.telemetry.videoConfig?.source, (newSource, oldSource) =
       }
     }
     else if (!newSource && oldSource) {
+      // eslint-disable-next-line no-console
       console.log('[INDEX.VUE] Video source removed. Clearing video src.')
       videoRef.value.pause() // 先暂停
       videoRef.value.removeAttribute('src')
@@ -252,13 +257,6 @@ const translatedCurrentEventName = computed(() => {
   if (!key)
     return t('noEvent')
   return t(key)
-})
-
-// 当 videoConfig 变化时更新视频源
-const currentVideoSource = computed(() => {
-  return displayStore.telemetry.videoConfig?.type === 'local'
-    ? displayStore.telemetry.videoConfig.source
-    : null // 未来可以是直播流 URL
 })
 </script>
 

@@ -1,26 +1,4 @@
-import type { DashboardStyle, VideoConfig } from './control'
-import { defineStore } from 'pinia'
-
-export interface MissionEventFromControl { // 与 controlStore 中的 MissionEvent 结构一致
-  time: number
-  eventNameKey: string
-  payload?: Record<string, any>
-}
-
-export interface TelemetryData {
-  simulationTime: number
-  altitude: number
-  speed: number
-  currentEventNameKey: string | null
-  currentEventPayload?: Record<string, any> | null
-  isPlaying: boolean
-  missionName: string
-  vehicleName: string
-  videoConfig?: VideoConfig
-  syncVideoToTime?: number
-  selectedDashboardStyle: DashboardStyle
-  allEvents: MissionEventFromControl[] // 新增
-}
+import { LAUNCHDECK_CHANNEL_NAME } from '../utils/constants'
 
 export const useDisplayStore = defineStore('display', {
   state: () => ({
@@ -45,7 +23,7 @@ export const useDisplayStore = defineStore('display', {
   actions: {
     _initBroadcastChannel() {
       if (import.meta.client && !this._broadcastChannel) {
-        this._broadcastChannel = new BroadcastChannel('launchdeck-data-channel') // Ensure same name
+        this._broadcastChannel = new BroadcastChannel(LAUNCHDECK_CHANNEL_NAME) // Ensure same name
         this._broadcastChannel.onmessage = (event) => {
           const data = event.data as TelemetryData
           // console.log('[DISPLAY] Received broadcast. New videoConfig.source:', data.videoConfig?.source)
@@ -58,7 +36,8 @@ export const useDisplayStore = defineStore('display', {
           console.error('DisplayStore: BroadcastChannel error', event)
           this.isConnected = false // Assume connection lost on error
         }
-        // console.log('DisplayStore: BroadcastChannel initialized and listening')
+        // eslint-disable-next-line no-console
+        console.log('DisplayStore: BroadcastChannel initialized and listening')
       }
     },
     _closeBroadcastChannel() {
@@ -66,7 +45,8 @@ export const useDisplayStore = defineStore('display', {
         this._broadcastChannel.close()
         this._broadcastChannel = null
         this.isConnected = false
-        // console.log('DisplayStore: BroadcastChannel closed')
+        // eslint-disable-next-line no-console
+        console.log('DisplayStore: BroadcastChannel closed')
       }
     },
     initialize() {

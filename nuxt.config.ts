@@ -11,6 +11,7 @@ export default defineNuxtConfig({
     '@nuxt/eslint',
     '@nuxtjs/i18n',
   ],
+  ssr: false,
 
   devtools: {
     enabled: false,
@@ -59,7 +60,8 @@ export default defineNuxtConfig({
     },
     prerender: {
       crawlLinks: false,
-      routes: ['/', '/control'],
+      routes: ['/'],
+      ignore: ['/control'],
     },
   },
 
