@@ -234,7 +234,7 @@ onUnmounted(() => {
       <p>{{ t('speed') }}: <span class="font-bold">{{ controlStore.speed.toFixed(0) }} m/s</span></p>
       <p>{{ t('currentEvent') }} <span class="text-blue-500 font-bold">{{ getTranslatedEventName(controlStore.currentEventNameKey) }}</span></p>
       <div v-if="controlStore.currentEventPayload">
-        {{ t('eventData') }} <pre class="text-sm p-2 rounded bg-gray-100">{{ controlStore.currentEventPayload }}</pre>
+        {{ t('eventData') }} <pre class="text-sm p-2 rounded">{{ controlStore.currentEventPayload }}</pre>
       </div>
     </div>
     <p class="text-sm text-gray-500 mt-4">

@@ -53,15 +53,15 @@ export const useControlStore = defineStore('control', () => {
         }
       }
       const data: TelemetryData = {
-        simulationTime: simulationTime.value,
-        altitude: altitude.value,
-        speed: speed.value,
-        currentEventNameKey: currentEventNameKey.value,
-        currentEventPayload: currentEventPayload.value,
-        isPlaying: isPlaying.value,
-        selectedDashboardStyle: selectedDashboardStyle.value, // 发送选择的样式
-        missionName: loadedMissionName.value,
-        vehicleName: loadedVehicleName.value,
+        simulationTime: toRaw(simulationTime.value),
+        altitude: toRaw(altitude.value),
+        speed: toRaw(speed.value),
+        currentEventNameKey: toRaw(currentEventNameKey.value),
+        currentEventPayload: toRaw(currentEventPayload.value),
+        isPlaying: toRaw(isPlaying.value),
+        selectedDashboardStyle: toRaw(selectedDashboardStyle.value), // 发送选择的样式
+        missionName: toRaw(loadedMissionName.value),
+        vehicleName: toRaw(loadedVehicleName.value),
         videoConfig: toRaw(missionSequenceFile.value?.videoConfig), // 传递视频配置
         syncVideoToTime: syncVideoToTimePayload, // 传递视频同步时间
         allEvents: toRaw(missionSequenceFile.value?.events) || [], // 发送所有事件

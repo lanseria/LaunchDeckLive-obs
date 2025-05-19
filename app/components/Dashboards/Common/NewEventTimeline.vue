@@ -64,16 +64,16 @@ function getEventTopPosition(eventTime: number): number {
     :style="{ height: `${effectiveTimelineHeight}px`, overflow: 'hidden' }"
   >
     <!-- 标题 -->
-    <div class="text-gray-400 mb-1 px-1 text-right bg-gray-900 bg-opacity-80 uppercase left-0 right-0 top-0 absolute z-20 md:mb-2">
+    <div class="text-gray-400 mb-1 px-1 text-right uppercase left-0 right-0 top-0 absolute z-20 md:mb-2">
       {{ t('missionTimelineTitle') }}
     </div>
 
     <!-- 当前时间焦点线 -->
-    <div
+    <!-- <div
       class="current-time-line bg-red-500 h-px w-full left-0 right-0 absolute z-10"
       :style="{ top: `${effectiveFocusLineOffset}px` }"
       aria-hidden="true"
-    />
+    /> -->
 
     <!-- 事件列表容器，应用 translateY 使其内容滚动 -->
     <div
@@ -89,13 +89,13 @@ function getEventTopPosition(eventTime: number): number {
         :style="{ top: `${getEventTopPosition(event.time)}px` }"
         :class="{
           'opacity-50 text-gray-500': getEventStatus(event.time) === 'past',
-          'font-semibold text-cyan-400 scale-110 z-10': getEventStatus(event.time) === 'currentFocus',
+          'font-semibold text-cyan-400 scale-100 z-10': getEventStatus(event.time) === 'currentFocus',
           'text-gray-300': getEventStatus(event.time) === 'future',
         }"
       >
         <!-- 事件名称和时间的容器，用于靠右对齐 -->
         <div class="mr-3 flex flex-grow items-center justify-end space-x-2 md:mr-4">
-          <span class="event-name px-1 py-px text-right rounded bg-gray-800 bg-opacity-70 max-w-[100px] truncate md:max-w-[120px]">
+          <span class="event-name px-1 py-px text-right rounded bg-gray-800 bg-opacity-70 max-w-[200px] truncate md:max-w-[220px]">
             {{ t(event.eventNameKey) }}
           </span>
           <span class="event-time-met text-[0.6rem] text-gray-500 flex-shrink-0 md:text-xs">
