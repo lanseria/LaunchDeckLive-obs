@@ -14,7 +14,7 @@ export const useDisplayStore = defineStore('display', {
       videoConfig: undefined, // 初始化
       syncVideoToTime: undefined, // 初始化
       allEvents: [], // 初始化为空数组
-      selectedDashboardStyle: 'SpaceXFalcon9', // 与 controlStore 默认值一致
+      selectedDashboardStyle: 'SpaceLen1', // 与 controlStore 默认值一致
     } as TelemetryData,
     _broadcastChannel: null as BroadcastChannel | null,
     isConnected: false,

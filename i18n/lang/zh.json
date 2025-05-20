@@ -60,7 +60,7 @@
   "dashboardStyle": {
     "selectTitle": "选择仪表盘样式",
     "spacexFalcon9": "SpaceX 猎鹰9号",
-    "spaceLen1": "SpaceLen 1号"
+    "spaceLen1": "SpaceLen 1"
   },
   "seekSimulation": {
     "title": "快速跳转 (MET)",

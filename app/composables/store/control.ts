@@ -16,7 +16,7 @@ export const useControlStore = defineStore('control', () => {
   const currentEventPayload = ref<Record<string, any> | null>(null)
   const _eventIndex = ref(0)
 
-  const selectedDashboardStyle = ref<DashboardStyle>('SpaceXFalcon9') // 新增：默认样式
+  const selectedDashboardStyle = ref<DashboardStyle>('SpaceLen1')
 
   const loadedMissionName = computed(() => {
     if (!missionSequenceFile.value)

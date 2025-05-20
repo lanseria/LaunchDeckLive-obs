@@ -1,75 +1,88 @@
 <script setup lang="ts">
-import type { TelemetryData } from '~/composables/store/display'
 import { useI18n } from '#imports'
-import TelemetryItem from './Common/TelemetryItem.vue'
+import { formatMET } from '~/composables/utils/formatters'
+// import EventTimeline from './Common/EventTimeline.vue' // 引入时间轴组件
+import NewEventTimeline from './Common/NewEventTimeline.vue' // 引入时间轴组件
 
 const props = defineProps<{
   telemetry: TelemetryData
   hasReceivedOnce: boolean
-  translatedCurrentEventName: string
 }>()
 
 const { t } = useI18n()
+
+const formattedMET = computed(() => formatMET(props.telemetry.simulationTime))
 </script>
 
 <template>
-  <!-- TODO: SpaceLen1 独特的仪表盘布局和样式 -->
-  <!-- 例如，这里可以有不同的颜色主题、字体，或者遥测数据的不同排列方式 -->
-  <div class="text-yellow-300 font-sans p-4 bg-blue-900 bg-opacity-75 select-none bottom-0 left-0 right-0 absolute z-10 backdrop-blur-md lg:p-8 md:p-6">
-    <div class="mb-4 text-center md:mb-6">
-      <h1 class="text-3xl font-black tracking-tighter mb-1 md:text-5xl">
-        {{ props.telemetry.missionName?.toUpperCase() || t('displayPanelTitle') }} - SpaceLen
-      </h1>
-      <p class="text-md text-blue-200 mb-2 italic md:text-xl">
-        {{ props.telemetry.vehicleName || t('standby') }}
-      </p>
-      <p v-if="!props.telemetry.isPlaying && props.hasReceivedOnce" class="text-xl text-orange-400 font-bold md:text-2xl">
-        HOLDING COUNT
-      </p>
-      <p v-if="props.telemetry.isPlaying && props.hasReceivedOnce" class="text-xl text-lime-400 font-bold animate-pulse md:text-2xl">
-        MISSION IN PROGRESS
-      </p>
-      <p v-if="!props.hasReceivedOnce" class="text-lg text-yellow-200 md:text-xl">
-        {{ t('waitingForData') }}
-      </p>
-    </div>
-
-    <div class="mb-4 text-center gap-4 grid grid-cols-1 md:mb-6 md:gap-8 md:grid-cols-3">
-      <TelemetryItem
-        :label="`MET (T${props.telemetry.simulationTime < 0 ? '' : '+'})`"
-        :value="Math.abs(props.telemetry.simulationTime).toFixed(1)"
-        unit="sec"
-        label-class="text-blue-300"
-        value-class="text-yellow-400"
-        unit-class="text-yellow-500"
-      />
-      <TelemetryItem
-        label="ALTITUDE"
-        :value="props.telemetry.altitude.toFixed(0)"
-        unit="meters"
-        label-class="text-blue-300"
-        value-class="text-yellow-400"
-        unit-class="text-yellow-500"
-      />
-      <TelemetryItem
-        label="VELOCITY"
-        :value="props.telemetry.speed.toFixed(0)"
-        unit="m/s"
-        label-class="text-blue-300"
-        value-class="text-yellow-400"
-        unit-class="text-yellow-500"
-      />
-    </div>
-
-    <div class="mt-4 pt-4 text-center border-t-2 border-blue-500">
-      <div class="text-md text-blue-300 uppercase md:text-xl">
-        {{ t('currentEvent') }}
+  <div class="text-white font-mono flex flex-col select-none inset-0 justify-end absolute z-10">
+    <!-- 主仪表盘区域，使用 Grid 实现三列布局 -->
+    <!-- 调整 padding 和背景透明度 -->
+    <div class="p-3 bg-black bg-opacity-60 gap-x-4 grid grid-cols-[1fr_auto_1fr] items-center backdrop-blur-sm lg:p-6 md:p-4 md:gap-x-8">
+      <!-- 左列: 高度 和 速度 -->
+      <div class="text-left flex flex-col items-start space-y-2 md:space-y-3">
+        <div>
+          <div class="text-xs text-gray-400 uppercase md:text-sm">
+            {{ t('altitude') }}
+          </div>
+          <div class="text-lg font-bold lg:text-2xl md:text-xl">
+            {{ props.telemetry.altitude.toFixed(0) }} <span class="text-sm md:text-base">m</span>
+          </div>
+        </div>
+        <div>
+          <div class="text-xs text-gray-400 uppercase md:text-sm">
+            {{ t('speed') }}
+          </div>
+          <div class="text-lg font-bold lg:text-2xl md:text-xl">
+            {{ props.telemetry.speed.toFixed(0) }} <span class="text-sm md:text-base">m/s</span>
+          </div>
+        </div>
       </div>
-      <div class="text-2xl text-lime-300 font-bold flex h-10 truncate items-center justify-center md:text-4xl md:h-12">
-        {{ props.translatedCurrentEventName }}
+
+      <!-- 中间列: 任务名, 型号, MET -->
+      <div class="py-2 text-center md:py-0">
+        <h1 class="text-xl font-bold leading-tight tracking-wider lg:text-3xl md:text-2xl">
+          {{ props.telemetry.missionName || t('displayPanelTitle') }}
+        </h1>
+        <p class="text-xs text-gray-300 mb-1 md:text-sm md:mb-2">
+          {{ props.telemetry.vehicleName || t('standby') }}
+        </p>
+        <!-- MET 颜色调整 -->
+        <div class="text-2xl text-sky-400 font-bold lg:text-4xl md:text-3xl">
+          {{ formattedMET }}
+        </div>
+        <!-- 状态信息可以放在MET下方或完全移除，SpaceX界面通常很简洁 -->
+        <div class="text-xs mt-1 md:text-sm">
+          <span v-if="!props.telemetry.isPlaying && props.hasReceivedOnce" class="text-red-400 font-semibold">
+            {{ t('simulationPausedStoppedFull') }}
+          </span>
+          <span v-if="props.telemetry.isPlaying && props.hasReceivedOnce" class="text-green-400 font-semibold animate-pulse">
+            {{ t('simulationRunningFull') }}
+          </span>
+          <!-- 修正: 只有未接收到数据且已连接时显示 -->
+          <span v-if="!props.hasReceivedOnce " class="text-yellow-400">
+            {{ t('waitingForData') }}
+          </span>
+        </div>
       </div>
-      <div v-if="props.telemetry.currentEventPayload" class="text-sm text-blue-200 mt-1 p-1 rounded bg-blue-800 bg-opacity-60 max-w-full inline-block truncate md:text-base">
-        Payload: {{ props.telemetry.currentEventPayload }}
+
+      <!-- 右列: 事件时间轴 -->
+      <div>
+        <!-- 增加一些上边距对齐 -->
+        <!-- <EventTimeline
+          :events="telemetry.allEvents"
+          :current-time="telemetry.simulationTime"
+          :max-visible-events="3"
+        /> -->
+        <NewEventTimeline
+          :events="telemetry.allEvents"
+          :current-time="telemetry.simulationTime"
+          :pixels-per-second="5"
+          :focus-line-from-top="100"
+          :timeline-height="200"
+        />
+        <!--  例如，最多显示7条事件 -->
+        <!-- 不再需要单独显示 currentEventName 和 payload，时间轴组件会处理 -->
       </div>
     </div>
   </div>
