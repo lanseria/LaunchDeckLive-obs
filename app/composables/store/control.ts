@@ -1,7 +1,9 @@
+/* eslint-disable no-console */
 import { useStorage } from '@vueuse/core'
 import { LAUNCHDECK_CHANNEL_NAME } from '../utils/constants'
 
 export const useControlStore = defineStore('control', () => {
+  // --- 核心状态 ---
   const missionData = ref<MissionSequenceFile | null>(null)
   const timerClock = ref('T - 00:00:00')
   const isStarted = ref(false)
@@ -9,12 +11,18 @@ export const useControlStore = defineStore('control', () => {
   const currentTimeOffset = ref(0)
   const altitudeProfile = useStorage<AltitudePoint[]>('spacex_altitude_profile_v3', [])
 
+  // --- 私有计时器和通信变量 ---
   let _timerIntervalId: ReturnType<typeof setInterval> | null = null
   let _targetT0TimestampMs: number | null = null
   let _pauseTimeMs: number | null = null
   const _broadcastChannel = ref<BroadcastChannel | null>(null)
 
+  // --- 新增：用于缓存最后一次发送的状态 ---
+  let _lastBroadcastedData: TelemetryData | null = null
+
   const initialCountdownOffset = computed(() => {
+    if (missionData.value?.videoConfig?.type === 'local' && missionData.value.videoConfig.startTimeOffset !== undefined)
+      return missionData.value.videoConfig.startTimeOffset
     const firstNegativeEventTime = missionData.value?.events.find(e => e.time < 0)?.time
     return firstNegativeEventTime ?? -60
   })
@@ -46,9 +54,27 @@ export const useControlStore = defineStore('control', () => {
     return missionData.value?.altitude ?? 0
   })
 
+  // --- 关键修改点 1: 在初始化时添加消息监听器 ---
   function _initBroadcastChannel() {
-    if (import.meta.client && !_broadcastChannel.value)
+    if (import.meta.client && !_broadcastChannel.value) {
       _broadcastChannel.value = new BroadcastChannel(LAUNCHDECK_CHANNEL_NAME)
+
+      // 监听来自新显示窗口的状态请求
+      _broadcastChannel.value.onmessage = (event) => {
+        if (event.data === 'request-state' && _lastBroadcastedData) {
+          console.log('[CONTROL] Received state request, replying with last known state.')
+          // 当收到请求时，强制发送一次带有视频同步信息的最后状态
+          const replyData = { ..._lastBroadcastedData }
+
+          // 重新计算 syncVideoToTime，因为 _lastBroadcastedData 中可能没有
+          if (replyData.videoConfig?.type === 'local' && replyData.videoConfig.startTimeOffset !== undefined) {
+            replyData.syncVideoToTime = Math.max(0, replyData.simulationTime - replyData.videoConfig.startTimeOffset)
+          }
+
+          _broadcastChannel.value?.postMessage(replyData)
+        }
+      }
+    }
   }
 
   function formatTimeForClock(totalSeconds: number): string {
@@ -61,6 +87,7 @@ export const useControlStore = defineStore('control', () => {
     return `T ${sign} ${h}:${m}:${s}`
   }
 
+  // --- 关键修改点 2: 每次广播时缓存数据 ---
   function _updateAndBroadcast(options?: { forceVideoSync?: boolean }) {
     if (!_broadcastChannel.value || !missionData.value)
       return
@@ -71,23 +98,20 @@ export const useControlStore = defineStore('control', () => {
       syncVideoToTimePayload = Math.max(0, currentTimeOffset.value - offset)
     }
 
-    // --- 关键修改点 ---
-    // 1. 先构建一个包含响应式引用的临时对象
-    const rawMissionData = toRaw(missionData.value) // 对整个 missionData 对象使用 toRaw
+    const rawMissionData = toRaw(missionData.value)
 
     const telemetryObject: TelemetryData = {
-      simulationTime: currentTimeOffset.value, // 原始类型，无需 toRaw
-      timerClock: timerClock.value, // 原始类型，无需 toRaw
-      isPlaying: isStarted.value && !isPaused.value, // 原始类型，无需 toRaw
+      simulationTime: currentTimeOffset.value,
+      timerClock: timerClock.value,
+      isPlaying: isStarted.value && !isPaused.value,
       missionName: rawMissionData.missionName,
       vehicleName: rawMissionData.vehicle,
-      videoConfig: rawMissionData.videoConfig, // 从 toRaw 后的对象中取
-      syncVideoToTime: syncVideoToTimePayload, // 原始类型
-      altitude_km: currentAltitude.value, // 原始类型
+      videoConfig: rawMissionData.videoConfig,
+      syncVideoToTime: syncVideoToTimePayload,
+      altitude_km: currentAltitude.value,
       speed_kmh: rawMissionData.speed ?? 0,
-      // 2. 确保 map 使用正确的 key 'name'
       timestamps: rawMissionData.events.map(e => e.time),
-      nodeNames: rawMissionData.events.map(e => e.name), // 确认使用 e.name
+      nodeNames: rawMissionData.events.map(e => e.name),
       missionDuration: 2 * Math.max(...rawMissionData.events.map(e => Math.abs(e.time))),
       maxQTitle: rawMissionData.maxQTitle ?? '',
       maxQLine1: rawMissionData.maxQLine1 ?? '',
@@ -95,9 +119,12 @@ export const useControlStore = defineStore('control', () => {
       maxQLine3: rawMissionData.maxQLine3 ?? '',
     }
 
-    // 3. postMessage 发送纯净的对象
+    // 发送并缓存
     _broadcastChannel.value.postMessage(telemetryObject)
+    _lastBroadcastedData = telemetryObject // 缓存最后发送的数据
   }
+
+  // 其他函数 (start, stop, etc.) 保持不变
 
   function _stopInternalTimer() {
     if (_timerIntervalId) {
@@ -134,6 +161,7 @@ export const useControlStore = defineStore('control', () => {
       isStarted.value = true; isPaused.value = false; _pauseTimeMs = null
       _targetT0TimestampMs = performance.now() - (currentTimeOffset.value * 1000)
       _startInternalTimer()
+      _updateAndBroadcast({ forceVideoSync: true }) // 开始时强制同步
     }
     else if (isPaused.value) {
       isPaused.value = false
@@ -141,13 +169,14 @@ export const useControlStore = defineStore('control', () => {
         _targetT0TimestampMs += performance.now() - _pauseTimeMs
       _pauseTimeMs = null
       _startInternalTimer()
+      _updateAndBroadcast() // 恢复时广播状态
     }
     else {
       isPaused.value = true
       _pauseTimeMs = performance.now()
       _stopInternalTimer()
+      _updateAndBroadcast() // 暂停时广播状态
     }
-    _updateAndBroadcast()
   }
 
   function resetSimulation() {

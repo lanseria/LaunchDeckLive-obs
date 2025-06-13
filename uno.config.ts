@@ -5,7 +5,7 @@ import {
   presetIcons,
   presetTypography,
   presetWebFonts,
-  presetWind4,
+  presetWind3,
   transformerDirectives,
   transformerVariantGroup,
 } from 'unocss'
@@ -16,7 +16,7 @@ export default defineConfig({
     ['icon-btn', 'inline-block cursor-pointer select-none opacity-75 transition duration-200 ease-in-out hover:opacity-100 hover:text-teal-600'],
   ],
   presets: [
-    presetWind4(),
+    presetWind3(),
     presetAttributify(),
     presetIcons({
       scale: 1.2,
@@ -24,13 +24,15 @@ export default defineConfig({
     }),
     presetTypography(),
     presetWebFonts({
-      themeKey: 'fonts',
       fonts: {
         sans: 'DM Sans',
         serif: 'DM Serif Display',
         mono: 'DM Mono',
-        saira: [ // 使用对象可以配置更多选项
-          { name: 'Saira', weights: ['400', '500', '600'] },
+        saira: [
+          {
+            name: 'Saira',
+            weights: ['200', '400', '500', '600', '700'],
+          },
         ],
       },
       processors: createLocalFontProcessor(),
