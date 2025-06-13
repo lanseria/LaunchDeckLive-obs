@@ -43,6 +43,44 @@ function plotNodesOnCircle() {
   const angleSpan = Math.PI / 2
   const startAngle = -Math.PI / 2 - angleSpan / 2
   const endAngle = -Math.PI / 2 + angleSpan / 2
+  const arcDrawingFlags = '0 0 1'
+
+  const innerArcOffsetFromMain = 45
+  const outerArcOffsetFromMain = 45
+  const innerArcFillColor = 'rgba(0, 0, 0, 0.7)'
+  const innerArcStrokeColor = '#808080'
+  const innerArcStrokeWidth = '2'
+  const outerArcFillColor = 'rgba(0, 0, 0, 0.3)'
+
+  // 1. Outer Decorative Arc
+  const outerDecoArcRadius = currentCircleRadius + outerArcOffsetFromMain
+  if (outerDecoArcRadius > 0) {
+    const x1_outer = currentCircleCenterX + outerDecoArcRadius * Math.cos(startAngle)
+    const y1_outer = currentCircleCenterY + outerDecoArcRadius * Math.sin(startAngle)
+    const x2_outer = currentCircleCenterX + outerDecoArcRadius * Math.cos(endAngle)
+    const y2_outer = currentCircleCenterY + outerDecoArcRadius * Math.sin(endAngle)
+    const outerArcPath = document.createElementNS('http://www.w3.org/2000/svg', 'path')
+    outerArcPath.setAttribute('d', `M ${x1_outer} ${y1_outer} A ${outerDecoArcRadius} ${outerDecoArcRadius} ${arcDrawingFlags} ${x2_outer} ${y2_outer} Z`)
+    outerArcPath.setAttribute('fill', outerArcFillColor)
+    outerArcPath.setAttribute('stroke', 'none')
+    svg.appendChild(outerArcPath)
+  }
+
+  // 2. Inner Decorative Arc
+  const innerDecoArcRadius = currentCircleRadius - innerArcOffsetFromMain
+  if (innerDecoArcRadius > 0) {
+    const x1_inner = currentCircleCenterX + innerDecoArcRadius * Math.cos(startAngle)
+    const y1_inner = currentCircleCenterY + innerDecoArcRadius * Math.sin(startAngle)
+    const x2_inner = currentCircleCenterX + innerDecoArcRadius * Math.cos(endAngle)
+    const y2_inner = currentCircleCenterY + innerDecoArcRadius * Math.sin(endAngle)
+    const innerArcPath = document.createElementNS('http://www.w3.org/2000/svg', 'path')
+    innerArcPath.setAttribute('d', `M ${x1_inner} ${y1_inner} A ${innerDecoArcRadius} ${innerDecoArcRadius} ${arcDrawingFlags} ${x2_inner} ${y2_inner} Z`)
+    innerArcPath.setAttribute('fill', innerArcFillColor)
+    innerArcPath.setAttribute('stroke', innerArcStrokeColor)
+    innerArcPath.setAttribute('stroke-width', innerArcStrokeWidth)
+    svg.appendChild(innerArcPath)
+  }
+
   const x1_bg = currentCircleCenterX + mainArcRadius * Math.cos(startAngle)
   const y1_bg = currentCircleCenterY + mainArcRadius * Math.sin(startAngle)
   const x2_bg = currentCircleCenterX + mainArcRadius * Math.cos(endAngle)
@@ -177,7 +215,7 @@ watch(
 </script>
 
 <template>
-  <div class="flex w-full bottom-0 justify-center absolute overflow-hidden">
+  <div class="absolute bottom-0 w-full flex justify-center overflow-hidden">
     <!-- eslint-disable-next-line vue/html-self-closing -->
     <svg ref="svgEl" class="w-full" :width="effectiveSvgWidth" :height="effectiveSvgHeight"></svg>
   </div>

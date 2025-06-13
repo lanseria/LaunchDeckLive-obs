@@ -9,20 +9,20 @@ const props = defineProps<{
 </script>
 
 <template>
-  <div class="font-saira text-white h-full w-full select-none relative">
+  <div class="relative h-full w-full select-none text-white font-saira">
     <!-- Center Clock and Mission Name -->
-    <div class="font-400 mx-auto text-center max-w-md bottom-16px left-1/2 fixed z-50 -translate-x-1/2">
+    <div class="fixed bottom-16px left-1/2 z-50 mx-auto max-w-md text-center font-400 -translate-x-1/2">
       <div class="text-42px leading-tight tabular-nums">
         {{ props.telemetry.timerClock }}
       </div>
       <div class="text-sm uppercase">
-        {{ props.telemetry.missionName }}
+        {{ props.telemetry.vehicleName }} - {{ props.telemetry.missionName }}
       </div>
     </div>
 
     <!-- Timeline SVG -->
     <TimelineSvg
-      class="bottom-0 left-1/2 fixed z-30 -translate-x-1/2"
+      class="fixed bottom-0 left-1/2 z-30 -translate-x-1/2"
       :timestamps="props.telemetry.timestamps"
       :node-names="props.telemetry.nodeNames"
       :mission-duration="props.telemetry.missionDuration"
@@ -34,8 +34,8 @@ const props = defineProps<{
     />
 
     <!-- Left Gauges & Gradient -->
-    <TrapezoidGradient class="bottom-0 left-0 absolute z-1" />
-    <div class="flex gap-4 bottom-10px left-60px absolute z-30">
+    <TrapezoidGradient class="absolute bottom-0 left-0 z-1" />
+    <div class="absolute bottom-10px left-60px z-30 flex gap-4">
       <Gauge
         label="SPEED"
         unit="KM/H"
@@ -52,8 +52,8 @@ const props = defineProps<{
     </div>
 
     <!-- Right Max-Q Info & Gradient -->
-    <TrapezoidGradient class="bottom-0 right-0 absolute z-1" horizontal-flip />
-    <div class="pr-40px text-right flex flex-col h-180px w-550px bottom-0 right-0 justify-center absolute z-1">
+    <TrapezoidGradient class="absolute bottom-0 right-0 z-1" horizontal-flip />
+    <div class="absolute bottom-0 right-0 z-1 h-180px w-550px flex flex-col justify-center pr-40px text-right">
       <div class="text-30px font-600">
         {{ props.telemetry.maxQTitle }}
       </div>

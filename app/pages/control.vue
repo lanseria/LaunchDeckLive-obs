@@ -190,12 +190,12 @@ watch(() => [
 
 <template>
   <Adapter>
-    <div class="bg-black h-full w-full relative overflow-hidden">
+    <div class="relative h-full w-full overflow-hidden bg-black">
       <video
         ref="videoRef"
         key="launch-video"
         playsinline
-        class="h-full w-full left-0 top-0 absolute z-0 object-cover"
+        class="absolute left-0 top-0 z-0 h-full w-full object-cover"
         preload="auto"
         @loadedmetadata="() => {
           if (displayStore.telemetry.syncVideoToTime !== undefined && videoRef && displayStore.telemetry.videoConfig?.type === 'local') {
@@ -218,11 +218,11 @@ watch(() => [
       </video>
       <div
         v-if="showPlayButton"
-        class="bg-black bg-opacity-50 flex flex-col cursor-pointer items-center inset-0 justify-center absolute z-20"
+        class="absolute inset-0 z-20 flex flex-col cursor-pointer items-center justify-center bg-black bg-opacity-50"
         @click="playVideoWithSound"
       >
-        <svg class="text-white opacity-80 h-16 w-16 transition-opacity hover:opacity-100 md:h-24 md:w-24" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd" /></svg>
-        <p class="text-lg text-white mt-2 md:text-xl">
+        <svg class="h-16 w-16 text-white opacity-80 transition-opacity md:h-24 md:w-24 hover:opacity-100" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd" /></svg>
+        <p class="mt-2 text-lg text-white md:text-xl">
           点击播放视频
         </p>
       </div>
@@ -232,12 +232,12 @@ watch(() => [
         :telemetry="displayStore.telemetry"
         :has-received-once="hasReceivedOnce"
       />
-      <div v-else class="flex items-center inset-0 justify-center absolute z-10">
+      <div v-else class="absolute inset-0 z-10 flex items-center justify-center">
         <p class="text-xl text-yellow-400 font-mono">
           等待来自控制面板的数据...
         </p>
       </div>
-      <div class="text-xs text-gray-500 opacity-70 transition-opacity bottom-1 right-2 absolute z-20 hover:opacity-100">
+      <div class="absolute bottom-1 right-2 z-20 text-xs text-gray-500 opacity-70 transition-opacity hover:opacity-100">
         请确保
         <NuxtLink to="/" target="_blank" class="text-blue-400 hover:underline">
           控制面板
