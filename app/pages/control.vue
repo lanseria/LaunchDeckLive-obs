@@ -3,14 +3,13 @@ import { useDisplayStore } from '~/composables/store/display'
 
 // 动态导入仪表盘组件
 const SpaceXFalcon9Dashboard = defineAsyncComponent(() => import('~/components/Dashboards/SpaceXFalcon9.vue'))
-const SpaceLen1Dashboard = defineAsyncComponent(() => import('~/components/Dashboards/SpaceLen1.vue'))
 
 const displayStore = useDisplayStore()
 const hasReceivedOnce = ref(false)
 const videoRef = useTemplateRef('videoRef')
 const showPlayButton = ref(false)
 
-const currentDashboardComponent = shallowRef<any>(SpaceLen1Dashboard)
+const currentDashboardComponent = shallowRef<any>(SpaceXFalcon9Dashboard)
 
 const isSeeking = ref(false)
 let seekingTimeoutId: NodeJS.Timeout | null = null
@@ -113,15 +112,6 @@ function seekVideo(targetTime: number) {
   }, SEEK_TIMEOUT_MS)
 }
 
-watch(() => displayStore.telemetry.selectedDashboardStyle, (newStyle) => {
-  if (newStyle === 'SpaceXFalcon9')
-    currentDashboardComponent.value = SpaceXFalcon9Dashboard
-  else if (newStyle === 'SpaceLen1')
-    currentDashboardComponent.value = SpaceLen1Dashboard
-  else
-    currentDashboardComponent.value = SpaceLen1Dashboard
-}, { immediate: true })
-
 watch(() => displayStore.telemetry.isPlaying, (newIsPlaying) => {
   if (displayStore.telemetry.videoConfig?.type === 'local') {
     if (newIsPlaying)
@@ -183,10 +173,10 @@ watch(() => displayStore.telemetry.videoConfig?.source, (newSource, oldSource) =
 
 watch(() => [
   displayStore.telemetry.simulationTime,
-  displayStore.telemetry.altitude,
-  displayStore.telemetry.speed,
+  displayStore.telemetry.altitude_km,
+  displayStore.telemetry.speed_kmh,
   displayStore.telemetry.isPlaying,
-  displayStore.telemetry.currentEventName,
+  displayStore.telemetry.missionName,
   displayStore.isConnected,
 ], (newValues) => {
   const newIsConnected = newValues[5]

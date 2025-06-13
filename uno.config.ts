@@ -24,10 +24,14 @@ export default defineConfig({
     }),
     presetTypography(),
     presetWebFonts({
+      themeKey: 'fonts',
       fonts: {
         sans: 'DM Sans',
         serif: 'DM Serif Display',
         mono: 'DM Mono',
+        saira: [ // 使用对象可以配置更多选项
+          { name: 'Saira', weights: ['400', '500', '600'] },
+        ],
       },
       processors: createLocalFontProcessor(),
     }),

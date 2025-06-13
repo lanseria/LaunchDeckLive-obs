@@ -1,227 +1,206 @@
-import { LAUNCHDECK_CHANNEL_NAME, SIMULATION_INTERVAL_MS, SPEED_FACTOR } from '../utils/constants'
+import { useStorage } from '@vueuse/core'
+import { LAUNCHDECK_CHANNEL_NAME } from '../utils/constants'
 
 export const useControlStore = defineStore('control', () => {
-  const simulationTime = ref(0)
-  const altitude = ref(0)
-  const speed = ref(0)
-  const isPlaying = ref(false)
-  const initialBoostDone = ref(false)
-  const _intervalId = ref<NodeJS.Timeout | null>(null)
+  const missionData = ref<MissionSequenceFile | null>(null)
+  const timerClock = ref('T - 00:00:00')
+  const isStarted = ref(false)
+  const isPaused = ref(false)
+  const currentTimeOffset = ref(0)
+  const altitudeProfile = useStorage<AltitudePoint[]>('spacex_altitude_profile_v3', [])
+
+  let _timerIntervalId: ReturnType<typeof setInterval> | null = null
+  let _targetT0TimestampMs: number | null = null
+  let _pauseTimeMs: number | null = null
   const _broadcastChannel = ref<BroadcastChannel | null>(null)
 
-  const missionSequenceFile = ref<MissionSequenceFile | null>(null)
-  const currentEventName = ref<string | null>(null)
-  const currentEventPayload = ref<Record<string, any> | null>(null)
-  const _eventIndex = ref(0)
+  const initialCountdownOffset = computed(() => {
+    const firstNegativeEventTime = missionData.value?.events.find(e => e.time < 0)?.time
+    return firstNegativeEventTime ?? -60
+  })
 
-  const selectedDashboardStyle = ref<DashboardStyle>('SpaceLen1')
+  const currentAltitude = computed(() => {
+    const profile = altitudeProfile.value
+    if (!profile || profile.length === 0)
+      return missionData.value?.altitude ?? 0
 
-  const loadedMissionName = computed(() => missionSequenceFile.value?.missionName || 'N/A')
-  const loadedVehicleName = computed(() => missionSequenceFile.value?.vehicle || 'N/A')
+    const sortedProfile = [...profile].sort((a, b) => a.time - b.time)
+    const targetTime = currentTimeOffset.value
+
+    if (sortedProfile.length === 0)
+      return 0
+    if (targetTime <= sortedProfile[0]!.time)
+      return sortedProfile[0]!.altitude
+    if (targetTime >= sortedProfile[sortedProfile.length - 1]!.time)
+      return sortedProfile[sortedProfile.length - 1]!.altitude
+
+    for (let i = 0; i < sortedProfile.length - 1; i++) {
+      const prev = sortedProfile[i]!; const next = sortedProfile[i + 1]!
+      if (targetTime >= prev.time && targetTime <= next.time) {
+        if (prev.time === next.time)
+          return prev.altitude
+        const ratio = (targetTime - prev.time) / (next.time - prev.time)
+        return Number.parseFloat((prev.altitude + (next.altitude - prev.altitude) * ratio).toFixed(1))
+      }
+    }
+    return missionData.value?.altitude ?? 0
+  })
 
   function _initBroadcastChannel() {
     if (import.meta.client && !_broadcastChannel.value)
       _broadcastChannel.value = new BroadcastChannel(LAUNCHDECK_CHANNEL_NAME)
   }
 
-  function _closeBroadcastChannel() {
+  function formatTimeForClock(totalSeconds: number): string {
+    const abs = Math.abs(totalSeconds)
+    const secs = totalSeconds < 0 ? Math.ceil(abs) : Math.floor(abs)
+    const h = String(Math.floor(secs / 3600)).padStart(2, '0')
+    const m = String(Math.floor((secs % 3600) / 60)).padStart(2, '0')
+    const s = String(secs % 60).padStart(2, '0')
+    const sign = (totalSeconds < 0 || Object.is(totalSeconds, -0)) ? '-' : '+'
+    return `T ${sign} ${h}:${m}:${s}`
+  }
+
+  function _updateAndBroadcast(options?: { forceVideoSync?: boolean }) {
+    if (!_broadcastChannel.value || !missionData.value)
+      return
+
+    let syncVideoToTimePayload: number | undefined
+    if (options?.forceVideoSync && missionData.value.videoConfig?.type === 'local') {
+      const offset = missionData.value.videoConfig.startTimeOffset || 0
+      syncVideoToTimePayload = Math.max(0, currentTimeOffset.value - offset)
+    }
+
+    // --- 关键修改点 ---
+    // 1. 先构建一个包含响应式引用的临时对象
+    const rawMissionData = toRaw(missionData.value) // 对整个 missionData 对象使用 toRaw
+
+    const telemetryObject: TelemetryData = {
+      simulationTime: currentTimeOffset.value, // 原始类型，无需 toRaw
+      timerClock: timerClock.value, // 原始类型，无需 toRaw
+      isPlaying: isStarted.value && !isPaused.value, // 原始类型，无需 toRaw
+      missionName: rawMissionData.missionName,
+      vehicleName: rawMissionData.vehicle,
+      videoConfig: rawMissionData.videoConfig, // 从 toRaw 后的对象中取
+      syncVideoToTime: syncVideoToTimePayload, // 原始类型
+      altitude_km: currentAltitude.value, // 原始类型
+      speed_kmh: rawMissionData.speed ?? 0,
+      // 2. 确保 map 使用正确的 key 'name'
+      timestamps: rawMissionData.events.map(e => e.time),
+      nodeNames: rawMissionData.events.map(e => e.name), // 确认使用 e.name
+      missionDuration: 2 * Math.max(...rawMissionData.events.map(e => Math.abs(e.time))),
+      maxQTitle: rawMissionData.maxQTitle ?? '',
+      maxQLine1: rawMissionData.maxQLine1 ?? '',
+      maxQLine2: rawMissionData.maxQLine2 ?? '',
+      maxQLine3: rawMissionData.maxQLine3 ?? '',
+    }
+
+    // 3. postMessage 发送纯净的对象
+    _broadcastChannel.value.postMessage(telemetryObject)
+  }
+
+  function _stopInternalTimer() {
+    if (_timerIntervalId) {
+      clearInterval(_timerIntervalId)
+      _timerIntervalId = null
+    }
+  }
+
+  function _startInternalTimer() {
+    _stopInternalTimer()
+    if (!_targetT0TimestampMs)
+      return
+
+    const timerLoop = () => {
+      if (isPaused.value || !_targetT0TimestampMs)
+        return
+      currentTimeOffset.value = (performance.now() - _targetT0TimestampMs) / 1000
+      timerClock.value = formatTimeForClock(currentTimeOffset.value)
+      _updateAndBroadcast()
+    }
+    timerLoop()
+    _timerIntervalId = setInterval(timerLoop, 50)
+  }
+
+  function loadMissionSequence(data: MissionSequenceFile) {
+    missionData.value = data
+    resetSimulation()
+  }
+
+  function toggleLaunch() {
+    if (!missionData.value)
+      return
+    if (!isStarted.value) {
+      isStarted.value = true; isPaused.value = false; _pauseTimeMs = null
+      _targetT0TimestampMs = performance.now() - (currentTimeOffset.value * 1000)
+      _startInternalTimer()
+    }
+    else if (isPaused.value) {
+      isPaused.value = false
+      if (_pauseTimeMs && _targetT0TimestampMs)
+        _targetT0TimestampMs += performance.now() - _pauseTimeMs
+      _pauseTimeMs = null
+      _startInternalTimer()
+    }
+    else {
+      isPaused.value = true
+      _pauseTimeMs = performance.now()
+      _stopInternalTimer()
+    }
+    _updateAndBroadcast()
+  }
+
+  function resetSimulation() {
+    _stopInternalTimer()
+    isStarted.value = false
+    isPaused.value = false
+    _targetT0TimestampMs = null
+    _pauseTimeMs = null
+    currentTimeOffset.value = initialCountdownOffset.value
+    timerClock.value = formatTimeForClock(currentTimeOffset.value)
+    _updateAndBroadcast({ forceVideoSync: true })
+  }
+
+  function seekSimulation(targetSeconds: number) {
+    if (Number.isNaN(targetSeconds))
+      return
+    currentTimeOffset.value = targetSeconds
+    timerClock.value = formatTimeForClock(targetSeconds)
+
+    if (isStarted.value && !isPaused.value) {
+      _stopInternalTimer()
+      _targetT0TimestampMs = performance.now() - (targetSeconds * 1000)
+      _startInternalTimer()
+    }
+    else {
+      _targetT0TimestampMs = performance.now() - (targetSeconds * 1000)
+    }
+    _updateAndBroadcast({ forceVideoSync: true })
+  }
+
+  function initialize() {
+    _initBroadcastChannel()
+  }
+
+  function dispose() {
+    _stopInternalTimer()
     if (_broadcastChannel.value) {
       _broadcastChannel.value.close()
       _broadcastChannel.value = null
     }
   }
 
-  function _broadcastState(options?: { forceVideoSync?: boolean }) {
-    if (_broadcastChannel.value) {
-      let syncVideoToTimePayload: number | undefined
-      // **核心改动**: 只有在明确要求时才计算和发送 syncVideoToTime
-      if (options?.forceVideoSync && missionSequenceFile.value?.videoConfig?.type === 'local' && missionSequenceFile.value.videoConfig.startTimeOffset !== undefined) {
-        const calculatedVideoTime = simulationTime.value - missionSequenceFile.value.videoConfig.startTimeOffset
-        syncVideoToTimePayload = Math.max(0, calculatedVideoTime)
-      }
-
-      const data: TelemetryData = {
-        simulationTime: toRaw(simulationTime.value),
-        altitude: toRaw(altitude.value),
-        speed: toRaw(speed.value),
-        currentEventName: toRaw(currentEventName.value),
-        currentEventPayload: toRaw(currentEventPayload.value),
-        isPlaying: toRaw(isPlaying.value),
-        selectedDashboardStyle: toRaw(selectedDashboardStyle.value),
-        missionName: toRaw(loadedMissionName.value),
-        vehicleName: toRaw(loadedVehicleName.value),
-        videoConfig: toRaw(missionSequenceFile.value?.videoConfig),
-        syncVideoToTime: syncVideoToTimePayload, // 可能为 undefined
-        allEvents: toRaw(missionSequenceFile.value?.events) || [],
-      }
-      _broadcastChannel.value.postMessage(data)
-    }
-  }
-
-  function setDashboardStyle(style: DashboardStyle) {
-    selectedDashboardStyle.value = style
-    _broadcastState() // 切换样式不需要同步视频
-  }
-
-  function loadMissionSequence(sequenceData: MissionSequenceFile) {
-    sequenceData.events.sort((a, b) => a.time - b.time)
-    missionSequenceFile.value = sequenceData
-    resetSimulation() // reset 会强制同步视频
-  }
-
-  function _checkEvents() {
-    if (!missionSequenceFile.value || !missionSequenceFile.value.events.length)
-      return
-
-    const nextEvent = missionSequenceFile.value.events[_eventIndex.value]
-    if (nextEvent && simulationTime.value >= nextEvent.time) {
-      currentEventName.value = nextEvent.eventName
-      currentEventPayload.value = nextEvent.payload || null
-      _eventIndex.value++
-    }
-  }
-
-  function startSimulation() {
-    if (isPlaying.value)
-      return
-    if (!missionSequenceFile.value) {
-      // eslint-disable-next-line no-alert
-      alert('请先加载任务时序文件')
-      return
-    }
-    _initBroadcastChannel()
-    isPlaying.value = true
-
-    if (_intervalId.value)
-      clearInterval(_intervalId.value)
-
-    // **关键**: 开始时强制同步一次视频
-    _broadcastState({ forceVideoSync: true })
-
-    _intervalId.value = setInterval(() => {
-      const deltaTime = SIMULATION_INTERVAL_MS / 1000
-      simulationTime.value += deltaTime
-
-      if (simulationTime.value >= 0 && altitude.value === 0 && speed.value === 0 && !initialBoostDone.value) {
-        altitude.value += SPEED_FACTOR * deltaTime * 0.5
-        speed.value += SPEED_FACTOR * deltaTime * 2
-        if (simulationTime.value > 2)
-          initialBoostDone.value = true
-      }
-      else if (simulationTime.value >= 0) {
-        altitude.value += speed.value * deltaTime
-      }
-      else {
-        altitude.value = 0
-        speed.value = 0
-      }
-      _checkEvents()
-      // **关键**: 正常循环时不再发送视频同步指令
-      _broadcastState()
-    }, SIMULATION_INTERVAL_MS)
-  }
-
-  function pauseSimulation() {
-    if (!isPlaying.value)
-      return
-    isPlaying.value = false
-    if (_intervalId.value) {
-      clearInterval(_intervalId.value)
-      _intervalId.value = null
-    }
-    // **关键**: 暂停时也广播一次状态，确保 isPlaying=false 被发送
-    _broadcastState({ forceVideoSync: false }) // 暂停不需要强制视频seek
-  }
-
-  function resetSimulation() {
-    pauseSimulation()
-    initialBoostDone.value = false
-    _eventIndex.value = 0
-    currentEventPayload.value = null
-
-    if (missionSequenceFile.value?.videoConfig?.type === 'local' && missionSequenceFile.value.videoConfig.startTimeOffset !== undefined) {
-      simulationTime.value = missionSequenceFile.value.videoConfig.startTimeOffset
-    }
-    else {
-      const firstEventTime = missionSequenceFile.value?.events[0]?.time
-      simulationTime.value = (firstEventTime !== undefined && firstEventTime < 0) ? firstEventTime : 0
-    }
-
-    altitude.value = 0
-    speed.value = 0
-
-    _primeCurrentEventBasedOnTime()
-
-    // **关键**: 重置时强制同步视频到新的起点
-    _broadcastState({ forceVideoSync: true })
-    // eslint-disable-next-line no-console
-    console.log(`Simulation reset. MET set to: ${simulationTime.value}s`)
-  }
-
-  function _primeCurrentEventBasedOnTime() {
-    currentEventName.value = null
-    if (!missionSequenceFile.value || !missionSequenceFile.value.events.length)
-      return
-
-    let lastPassedEvent: MissionEvent | null = null
-    for (let i = 0; i < missionSequenceFile.value.events.length; i++) {
-      const event = missionSequenceFile.value.events[i]
-      if (event!.time <= simulationTime.value) {
-        lastPassedEvent = event!
-        _eventIndex.value = i + 1
-      }
-      else {
-        break
-      }
-    }
-
-    if (lastPassedEvent)
-      currentEventName.value = lastPassedEvent.eventName
-  }
-
-  function seekSimulation(targetMET: number) {
-    if (!missionSequenceFile.value)
-      return
-    const wasPlaying = isPlaying.value
-    if (wasPlaying)
-      pauseSimulation()
-
-    simulationTime.value = targetMET
-    _primeCurrentEventBasedOnTime()
-    // **关键**: 手动跳转时强制同步视频
-    _broadcastState({ forceVideoSync: true })
-    if (wasPlaying)
-      startSimulation()
-  }
-
-  function initialize() {
-    _initBroadcastChannel()
-    _broadcastState() // 初始广播
-  }
-
-  function dispose() {
-    pauseSimulation()
-    _closeBroadcastChannel()
-  }
-
   return {
-    simulationTime,
-    altitude,
-    speed,
-    isPlaying,
-    missionSequenceFile,
-    currentEventName,
-    currentEventPayload,
-    loadedMissionName,
-    loadedVehicleName,
-    selectedDashboardStyle,
+    missionData,
+    isPlaying: computed(() => isStarted.value && !isPaused.value),
+    simulationTime: currentTimeOffset,
+    altitude: currentAltitude,
+    speed: computed(() => missionData.value?.speed ?? 0),
     loadMissionSequence,
-    startSimulation,
-    pauseSimulation,
+    toggleLaunch,
     resetSimulation,
     seekSimulation,
     initialize,
     dispose,
-    setDashboardStyle,
   }
 })
