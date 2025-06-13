@@ -1,329 +1,204 @@
 <script setup lang="ts">
-import { useI18n } from '#imports'
-import { useDisplayStore } from '~/composables/store/display'
+import type { DashboardStyle } from '~/composables/store/control'
+import { useControlStore } from '~/composables/store/control'
 
-// 动态导入仪表盘组件
-const SpaceXFalcon9Dashboard = defineAsyncComponent(() => import('~/components/Dashboards/SpaceXFalcon9.vue'))
-const SpaceLen1Dashboard = defineAsyncComponent(() => import('~/components/Dashboards/SpaceLen1.vue'))
+const controlStore = useControlStore()
+const fileError = ref<string | null>(null)
 
-const displayStore = useDisplayStore()
-const { t } = useI18n()
+// 仪表盘样式选项 - 直接使用中文
+const dashboardStyles: { label: string, value: DashboardStyle }[] = [
+  { label: 'SpaceX 猎鹰9号', value: 'SpaceXFalcon9' },
+  { label: 'SpaceLen 1', value: 'SpaceLen1' },
+]
 
-const hasReceivedOnce = ref(false)
-const videoRef = useTemplateRef('videoRef')
-const showPlayButton = ref(false) // 用于处理有声自动播放失败
+const currentSelectedStyle = ref<DashboardStyle>(controlStore.selectedDashboardStyle)
+const seekTimeInput = ref<string>('')
+const seekError = ref<string | null>(null)
 
-// 使用 shallowRef 来存储当前仪表盘组件的引用
-const currentDashboardComponent = shallowRef<any>(SpaceLen1Dashboard) // 默认 SpaceX
-
-// --- 视频同步优化相关状态 ---
-const isSeeking = ref(false) // 寻址状态标志
-let seekingTimeoutId: NodeJS.Timeout | null = null // 寻址超时定时器ID
-const SYNC_TOLERANCE = 0.75 // 视频同步的容差（秒），可以调整
-const SEEK_TIMEOUT_MS = 2000 // 寻址操作的超时时间（毫秒）
-// ---
-
-// --- 存储 onCanPlay 处理器的引用，以便移除 ---
-let onCanPlayHandler: (() => void) | null = null
-// ---
-
-onMounted(() => {
-  // eslint-disable-next-line no-console
-  console.log('[INDEX.VUE] Mounted, initializing displayStore')
-  displayStore.initialize()
-  if (videoRef.value) {
-    videoRef.value.addEventListener('seeked', handleVideoSeeked)
-    videoRef.value.addEventListener('error', handleVideoError) // 添加错误监听
-    videoRef.value.addEventListener('stalled', handleVideoStalled) // 监听卡顿
-    videoRef.value.addEventListener('waiting', handleVideoWaiting) // 监听缓冲
-  }
+watch(currentSelectedStyle, (newStyle) => {
+  controlStore.setDashboardStyle(newStyle)
 })
 
-onBeforeUnmount(() => {
-  // eslint-disable-next-line no-console
-  console.log('[INDEX.VUE] BeforeUnmount, disposing displayStore')
-  displayStore.dispose()
-  if (videoRef.value) {
-    videoRef.value.pause()
-    videoRef.value.removeEventListener('seeked', handleVideoSeeked)
-    videoRef.value.removeEventListener('error', handleVideoError)
-    videoRef.value.removeEventListener('stalled', handleVideoStalled)
-    videoRef.value.removeEventListener('waiting', handleVideoWaiting)
-    if (onCanPlayHandler) { // 确保移除 canplay 监听器
-      videoRef.value.removeEventListener('canplay', onCanPlayHandler)
-      onCanPlayHandler = null
-    }
-    videoRef.value.removeAttribute('src')
-    videoRef.value.load() // 可能会触发错误，但通常是安全的
-  }
-  if (seekingTimeoutId)
-    clearTimeout(seekingTimeoutId)
+watch(() => controlStore.selectedDashboardStyle, (storeStyle) => {
+  if (currentSelectedStyle.value !== storeStyle)
+    currentSelectedStyle.value = storeStyle
 })
 
-// --- 视频事件处理器 ---
-function handleVideoSeeked() {
-  // console.log(`[VIDEO EVENT] Seeked to: ${videoRef.value?.currentTime}. Resetting seeking flag.`);
-  isSeeking.value = false
-  if (seekingTimeoutId)
-    clearTimeout(seekingTimeoutId)
-  seekingTimeoutId = null
+function handleFileUpload(event: Event) {
+  const target = event.target as HTMLInputElement
+  const file = target.files?.[0]
+  fileError.value = null
 
-  if (displayStore.telemetry.isPlaying && videoRef.value?.paused) {
-    // console.log("[VIDEO EVENT] Attempting to play video after seeked event because it was paused.");
-    playVideoWithSound()
-  }
-}
-
-function handleVideoError(event: Event) {
-  console.error('[VIDEO EVENT] Video Error:', event, videoRef.value?.error)
-  isSeeking.value = false // 发生错误时重置寻址标志
-  if (seekingTimeoutId)
-    clearTimeout(seekingTimeoutId)
-  showPlayButton.value = false // 视频错误时可能不适合显示播放按钮
-}
-function handleVideoStalled() {
-  console.warn('[VIDEO EVENT] Video stalled (可能是网络问题或数据不足)')
-  // 这里可以考虑显示一个缓冲指示器
-}
-function handleVideoWaiting() {
-  console.warn('[VIDEO EVENT] Video waiting for data (buffering)')
-  // 这里也可以考虑显示缓冲指示器
-}
-// ---
-
-// --- 视频控制函数 ---
-async function playVideoWithSound() {
-  if (!videoRef.value || !displayStore.telemetry.videoConfig?.source)
-    return // 如果没有视频源，则不操作
-
-  try {
-    showPlayButton.value = false
-    // console.log("[VIDEO CONTROL] Attempting to play video...");
-    await videoRef.value.play()
-    // console.log("[VIDEO CONTROL] Video playing.");
-  }
-  catch (error: any) {
-    console.error('[VIDEO CONTROL] Video play failed:', error.name, error.message)
-    if (error.name === 'NotAllowedError' || error.name === 'NotSupportedError') {
-      showPlayButton.value = true
-    }
-  }
-}
-
-function pauseVideo() {
-  if (videoRef.value) {
-    videoRef.value.pause()
-    // console.log("[VIDEO CONTROL] Video paused.");
-    showPlayButton.value = false
-    // 如果在暂停时正在寻址，也应该取消寻址状态（尽管不常见）
-    // if (isSeeking.value) {
-    //   isSeeking.value = false;
-    //   if (seekingTimeoutId) clearTimeout(seekingTimeoutId);
-    // }
-  }
-}
-
-function seekVideo(targetTime: number) {
-  if (!videoRef.value || isSeeking.value || videoRef.value.readyState === 0) {
-    // console.log(`[VIDEO CONTROL] Seek ignored. isSeeking: ${isSeeking.value}, readyState: ${videoRef.value?.readyState}`);
-    return
-  }
-
-  if (Math.abs(videoRef.value.currentTime - targetTime) <= SYNC_TOLERANCE) {
-    // console.log(`[VIDEO CONTROL] Video already close to target: ${targetTime}. No seek needed.`);
-    return
-  }
-
-  // eslint-disable-next-line no-console
-  console.log(`[VIDEO CONTROL] Requesting seek to: ${targetTime} (current: ${videoRef.value.currentTime.toFixed(2)})`)
-  isSeeking.value = true
-  videoRef.value.currentTime = targetTime
-
-  if (seekingTimeoutId)
-    clearTimeout(seekingTimeoutId)
-  seekingTimeoutId = setTimeout(() => {
-    if (isSeeking.value) {
-      console.warn(`[VIDEO CONTROL] Seek to ${targetTime} timed out. Resetting seeking flag.`)
-      isSeeking.value = false
-    }
-  }, SEEK_TIMEOUT_MS)
-}
-
-// ---
-
-// 监听 selectedDashboardStyle 的变化来切换组件
-watch(() => displayStore.telemetry.selectedDashboardStyle, (newStyle) => {
-  if (newStyle === 'SpaceXFalcon9') {
-    currentDashboardComponent.value = SpaceXFalcon9Dashboard
-  }
-  else if (newStyle === 'SpaceLen1') {
-    currentDashboardComponent.value = SpaceLen1Dashboard
-  }
-  else {
-    currentDashboardComponent.value = SpaceLen1Dashboard // 默认或回退
-  }
-}, { immediate: true })
-
-watch(() => displayStore.telemetry.isPlaying, (newIsPlaying) => {
-  if (displayStore.telemetry.videoConfig?.type === 'local') {
-    if (newIsPlaying) {
-      playVideoWithSound()
-    }
-    else {
-      pauseVideo()
-    }
-  }
-})
-
-watch(() => displayStore.telemetry.syncVideoToTime, (newVideoTime) => {
-  if (displayStore.telemetry.videoConfig?.type === 'local' && newVideoTime !== undefined) {
-    if (videoRef.value) { // 确保 videoRef 已挂载
-      if (videoRef.value.readyState > 0) {
-        seekVideo(newVideoTime)
-      }
-      else if (newVideoTime > 0) { // readyState 为 0，但期望跳转
-        // 移除旧的监听器（如果有）
-        if (onCanPlayHandler && videoRef.value) {
-          videoRef.value.removeEventListener('canplay', onCanPlayHandler)
-        }
-        onCanPlayHandler = () => {
-          if (videoRef.value && newVideoTime !== undefined) {
-            // eslint-disable-next-line no-console
-            console.log(`[VIDEO EVENT] Syncing video (onCanPlay) to: ${newVideoTime}`)
-            seekVideo(newVideoTime) // 使用 seekVideo
-            if (onCanPlayHandler && videoRef.value) { // 再次检查确保移除正确的引用
-              videoRef.value.removeEventListener('canplay', onCanPlayHandler)
-              onCanPlayHandler = null
+  if (file) {
+    if (file.type === 'application/json') {
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        try {
+          const content = e.target?.result
+          if (typeof content === 'string') {
+            const jsonData = JSON.parse(content)
+            // Updated validation check for new data structure
+            if (jsonData
+              && typeof jsonData.missionName === 'string'
+              && typeof jsonData.vehicle === 'string'
+              && Array.isArray(jsonData.events)
+              && jsonData.events.every((ev: any) => typeof ev.time === 'number' && typeof ev.eventName === 'string')
+            ) {
+              controlStore.loadMissionSequence(jsonData)
+            }
+            else {
+              fileError.value = 'JSON结构无效。应包含`missionName`, `vehicle`和带有`time`, `eventName`的`events`数组。'
+              target.value = ''
             }
           }
         }
-        videoRef.value.addEventListener('canplay', onCanPlayHandler)
+        catch (error) {
+          console.error('Error parsing JSON file:', error)
+          fileError.value = '解析JSON文件错误。请确保它是有效的JSON。'
+          target.value = ''
+        }
       }
+      reader.onerror = () => {
+        fileError.value = '读取文件错误。'
+        target.value = ''
+      }
+      reader.readAsText(file)
+    }
+    else {
+      fileError.value = '文件类型无效。请上传 .json 文件。'
+      target.value = ''
     }
   }
+}
+
+function handleSeek() {
+  seekError.value = null
+  if (!controlStore.missionSequenceFile) {
+    seekError.value = '请先加载任务时序文件。'
+    return
+  }
+  const time = Number.parseFloat(seekTimeInput.value)
+  if (Number.isNaN(time)) {
+    seekError.value = '请输入一个有效的数字作为跳转时间。'
+    return
+  }
+  controlStore.seekSimulation(time)
+}
+
+onMounted(() => {
+  controlStore.initialize()
+  currentSelectedStyle.value = controlStore.selectedDashboardStyle
 })
 
-watch(() => displayStore.telemetry.videoConfig?.source, (newSource, oldSource) => {
-  // console.log('[INDEX.VUE] videoConfig.source watcher. New:', newSource, 'Old:', oldSource);
-  if (videoRef.value) {
-    if (newSource && newSource !== oldSource) {
-      const newFullSourcePath = window.location.origin + newSource
-      // 只有当 src 真的变了，或者 video 元素还没有 src 时才更新
-      if (videoRef.value.currentSrc !== newFullSourcePath || !videoRef.value.hasAttribute('src')) {
-        // eslint-disable-next-line no-console
-        console.log(`[INDEX.VUE] Setting new video source and loading: ${newSource}`)
-        videoRef.value.src = newSource
-        videoRef.value.load()
-        isSeeking.value = false // 新视频源加载，重置寻址状态
-        if (seekingTimeoutId)
-          clearTimeout(seekingTimeoutId)
-        showPlayButton.value = false // 重置播放按钮状态
-      }
-    }
-    else if (!newSource && oldSource) {
-      // eslint-disable-next-line no-console
-      console.log('[INDEX.VUE] Video source removed. Clearing video src.')
-      videoRef.value.pause() // 先暂停
-      videoRef.value.removeAttribute('src')
-      videoRef.value.load() // 清空
-      isSeeking.value = false
-      if (seekingTimeoutId)
-        clearTimeout(seekingTimeoutId)
-      showPlayButton.value = false
-    }
-  }
-}, { immediate: false }) // immediate: false 依然推荐
-
-watch(() => [
-  displayStore.telemetry.simulationTime,
-  displayStore.telemetry.altitude,
-  displayStore.telemetry.speed,
-  displayStore.telemetry.isPlaying,
-  displayStore.telemetry.currentEventNameKey,
-  displayStore.isConnected,
-], (newValues) => {
-  const newIsConnected = newValues[5]
-  // ... (hasReceivedOnce 逻辑)
-  if (!hasReceivedOnce.value && newIsConnected && (newValues[0] !== 0 || newValues[1] !== 0 || newValues[2] !== 0 || newValues[3] || newValues[4] !== null)) {
-    hasReceivedOnce.value = true
-  }
-  if (!newIsConnected) {
-    hasReceivedOnce.value = false
-  }
-}, { deep: true, immediate: true })
-
-const translatedCurrentEventName = computed(() => {
-  const key = displayStore.telemetry.currentEventNameKey
-  if (!key)
-    return t('noEvent')
-  return t(key)
+onUnmounted(() => {
+  controlStore.dispose()
 })
 </script>
 
 <template>
-  <Adapter>
-    <div class="bg-black h-full w-full relative overflow-hidden">
-      <!-- 背景视频 -->
-      <video
-        ref="videoRef"
-        key="launch-video"
-        playsinline
-        class="h-full w-full left-0 top-0 absolute z-0 object-cover"
-        preload="auto"
-        @loadedmetadata="() => {
-          // console.log('[VIDEO EVENT] LoadedMetadata. Duration:', videoRef?.duration);
-          if (displayStore.telemetry.syncVideoToTime !== undefined && videoRef && displayStore.telemetry.videoConfig?.type === 'local') {
-            // console.log('[VIDEO EVENT] Initial sync on loadedmetadata to:', displayStore.telemetry.syncVideoToTime);
-            // 初始同步也应该通过 seekVideo，但要确保 isSeeking 不会阻止它
-            const initialSyncTime = Math.max(0, displayStore.telemetry.syncVideoToTime);
-            if (Math.abs(videoRef!.currentTime - initialSyncTime) > SYNC_TOLERANCE) {
-              isSeeking = false; // 允许初始 seek
-              seekVideo(initialSyncTime);
-            }
-          }
-          // 如果此时需要播放但浏览器阻止了，isPlaying watch 会处理后续的 .play() 尝试
-          if (displayStore.telemetry.isPlaying && videoRef?.paused) {
-            playVideoWithSound();
-          }
-        }"
-        @error="handleVideoError"
-        @seeked="handleVideoSeeked"
-        @stalled="handleVideoStalled"
-        @waiting="handleVideoWaiting"
-      >
-        Your browser does not support the video tag.
-      </video>
-      <div
-        v-if="showPlayButton"
-        class="bg-black bg-opacity-50 flex flex-col cursor-pointer items-center inset-0 justify-center absolute z-20"
-        @click="playVideoWithSound"
-      >
-        <!-- ... 播放按钮 SVG 和文字 ... -->
-        <svg class="text-white opacity-80 h-16 w-16 transition-opacity hover:opacity-100 md:h-24 md:w-24" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd" /></svg>
-        <p class="text-lg text-white mt-2 md:text-xl">
-          {{ t('clickToPlayVideo') }}
-        </p>
-      </div>
-      <!-- 动态仪表盘组件 -->
-      <component
-        :is="currentDashboardComponent"
-        v-if="displayStore.isConnected"
-        :telemetry="displayStore.telemetry"
-        :has-received-once="hasReceivedOnce"
-        :translated-current-event-name="translatedCurrentEventName"
-      />
-      <div v-else class="flex items-center inset-0 justify-center absolute z-10">
-        <p class="text-xl text-yellow-400 font-mono">
-          {{ t('waitingForData') }}
-        </p>
-      </div>
-      <!-- ... (底部控制台链接) ... -->
-      <div class="text-xs text-gray-500 opacity-70 transition-opacity bottom-1 right-2 absolute z-20 hover:opacity-100">
-        {{ t('ensureControlOpen', [t('controlPanelLinkText')]) }}
-        <NuxtLink to="/control" target="_blank" class="text-blue-400 hover:underline">
-          {{ t('controlPanelLinkText') }}
-        </NuxtLink>
+  <div class="font-sans p-8">
+    <div class="mb-6 flex items-center justify-between">
+      <h1 class="text-3xl font-bold">
+        LaunchDeck - 控制面板
+      </h1>
+      <div class="flex items-center space-x-4">
+        <DarkToggle />
       </div>
     </div>
-  </Adapter>
+    <div class="mb-6 p-4 border border-gray-300 rounded">
+      <h2 class="text-xl font-semibold mb-2">
+        任务时序
+      </h2>
+      <input type="file" accept=".json" class="mb-2" @change="handleFileUpload">
+      <p>加载任务: <span class="font-bold">{{ controlStore.loadedMissionName }}</span></p>
+      <p>运载火箭: <span class="font-bold">{{ controlStore.loadedVehicleName }}</span></p>
+      <div v-if="fileError" class="text-red-500">
+        {{ fileError }}
+      </div>
+    </div>
+
+    <div class="mb-6 p-4 border border-gray-300 rounded dark:border-gray-600">
+      <h2 class="text-xl font-semibold mb-2">
+        选择仪表盘样式
+      </h2>
+      <select
+        v-model="currentSelectedStyle"
+        class="text-gray-900 p-2 border border-gray-300 rounded bg-white w-full dark:text-gray-100 focus:outline-none dark:border-gray-600 dark:bg-gray-700 focus:ring-2 focus:ring-blue-500"
+      >
+        <option v-for="style in dashboardStyles" :key="style.value" :value="style.value">
+          {{ style.label }}
+        </option>
+      </select>
+    </div>
+
+    <div class="mb-6 gap-4 grid grid-cols-3">
+      <button
+        :disabled="controlStore.isPlaying || !controlStore.missionSequenceFile"
+        class="text-white px-4 py-2 rounded bg-green-500 hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed"
+        @click="controlStore.startSimulation"
+      >
+        开始
+      </button>
+      <button
+        :disabled="!controlStore.isPlaying"
+        class="text-white px-4 py-2 rounded bg-yellow-500 hover:bg-yellow-600 disabled:opacity-50"
+        @click="controlStore.pauseSimulation"
+      >
+        暂停
+      </button>
+      <button
+        :disabled="!controlStore.missionSequenceFile"
+        class="text-white px-4 py-2 rounded bg-red-500 hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
+        @click="controlStore.resetSimulation"
+      >
+        重置
+      </button>
+    </div>
+
+    <div class="mb-6 p-4 border border-gray-300 rounded dark:border-gray-600">
+      <h2 class="text-xl font-semibold mb-2">
+        快速跳转 (MET)
+      </h2>
+      <div class="flex items-center space-x-2">
+        <input
+          v-model="seekTimeInput"
+          type="number"
+          step="any"
+          class="text-gray-900 p-2 border border-gray-300 rounded bg-white flex-grow dark:text-gray-100 focus:outline-none dark:border-gray-600 dark:bg-gray-700 focus:ring-2 focus:ring-blue-500"
+          placeholder="输入秒数 (例如 -10 或 120.5)"
+          @keyup.enter="handleSeek"
+        >
+        <button
+          :disabled="!controlStore.missionSequenceFile"
+          class="text-white px-4 py-2 rounded bg-blue-500 hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+          @click="handleSeek"
+        >
+          跳转
+        </button>
+      </div>
+      <div v-if="seekError" class="text-sm text-red-500 mt-2">
+        {{ seekError }}
+      </div>
+    </div>
+
+    <div class="p-4 border border-gray-300 rounded">
+      <h2 class="text-xl font-semibold mb-2">
+        当前模拟状态:
+      </h2>
+      <p>状态: <span class="font-bold" :class="controlStore.isPlaying ? 'text-green-600' : 'text-red-600'">{{ controlStore.isPlaying ? '运行中' : '暂停/停止' }}</span></p>
+      <p>任务经过时间 (T{{ controlStore.simulationTime < 0 ? '' : '+' }}): <span class="font-bold">{{ Math.abs(controlStore.simulationTime).toFixed(1) }} s</span></p>
+      <p>高度: <span class="font-bold">{{ controlStore.altitude.toFixed(0) }} m</span></p>
+      <p>速度: <span class="font-bold">{{ controlStore.speed.toFixed(0) }} m/s</span></p>
+      <p>当前事件: <span class="text-blue-500 font-bold">{{ controlStore.currentEventName || '---' }}</span></p>
+      <div v-if="controlStore.currentEventPayload">
+        事件数据: <pre class="text-sm p-2 rounded">{{ controlStore.currentEventPayload }}</pre>
+      </div>
+    </div>
+    <p class="text-sm text-gray-500 mt-4">
+      在另一个标签/窗口中打开
+      <NuxtLink to="/control" target="_blank" class="text-blue-500 hover:underline">
+        展示页面
+      </NuxtLink>
+    </p>
+  </div>
 </template>

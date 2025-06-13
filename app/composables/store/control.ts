@@ -1,7 +1,7 @@
 import { LAUNCHDECK_CHANNEL_NAME, SIMULATION_INTERVAL_MS, SPEED_FACTOR } from '../utils/constants'
 
 export const useControlStore = defineStore('control', () => {
-  const { locale, t } = useI18n()
+  // const { locale, t } = useI18n() // REMOVED
 
   const simulationTime = ref(0)
   const altitude = ref(0)
@@ -12,23 +12,14 @@ export const useControlStore = defineStore('control', () => {
   const _broadcastChannel = ref<BroadcastChannel | null>(null)
 
   const missionSequenceFile = ref<MissionSequenceFile | null>(null)
-  const currentEventNameKey = ref<string | null>(null)
+  const currentEventName = ref<string | null>(null) // Renamed from currentEventNameKey
   const currentEventPayload = ref<Record<string, any> | null>(null)
   const _eventIndex = ref(0)
 
   const selectedDashboardStyle = ref<DashboardStyle>('SpaceLen1')
 
-  const loadedMissionName = computed(() => {
-    if (!missionSequenceFile.value)
-      return 'N/A'
-    return missionSequenceFile.value.missionName[locale.value as 'en' | 'zh'] || missionSequenceFile.value.missionName.en
-  })
-
-  const loadedVehicleName = computed(() => {
-    if (!missionSequenceFile.value)
-      return 'N/A'
-    return missionSequenceFile.value.vehicle[locale.value as 'en' | 'zh'] || missionSequenceFile.value.vehicle.en
-  })
+  const loadedMissionName = computed(() => missionSequenceFile.value?.missionName || 'N/A')
+  const loadedVehicleName = computed(() => missionSequenceFile.value?.vehicle || 'N/A')
 
   function _initBroadcastChannel() {
     if (import.meta.client && !_broadcastChannel.value) {
@@ -56,24 +47,23 @@ export const useControlStore = defineStore('control', () => {
         simulationTime: toRaw(simulationTime.value),
         altitude: toRaw(altitude.value),
         speed: toRaw(speed.value),
-        currentEventNameKey: toRaw(currentEventNameKey.value),
+        currentEventName: toRaw(currentEventName.value), // Renamed
         currentEventPayload: toRaw(currentEventPayload.value),
         isPlaying: toRaw(isPlaying.value),
-        selectedDashboardStyle: toRaw(selectedDashboardStyle.value), // 发送选择的样式
+        selectedDashboardStyle: toRaw(selectedDashboardStyle.value),
         missionName: toRaw(loadedMissionName.value),
         vehicleName: toRaw(loadedVehicleName.value),
-        videoConfig: toRaw(missionSequenceFile.value?.videoConfig), // 传递视频配置
-        syncVideoToTime: syncVideoToTimePayload, // 传递视频同步时间
-        allEvents: toRaw(missionSequenceFile.value?.events) || [], // 发送所有事件
+        videoConfig: toRaw(missionSequenceFile.value?.videoConfig),
+        syncVideoToTime: syncVideoToTimePayload,
+        allEvents: toRaw(missionSequenceFile.value?.events) || [],
       }
       _broadcastChannel.value.postMessage(data)
     }
   }
 
-  // 新增 action 用于改变仪表盘样式
   function setDashboardStyle(style: DashboardStyle) {
     selectedDashboardStyle.value = style
-    _broadcastState({ forceVideoSync: isPlaying.value }) // 广播状态，如果正在播放也同步视频
+    _broadcastState({ forceVideoSync: isPlaying.value })
     // eslint-disable-next-line no-console
     console.log('Dashboard style changed to:', style)
   }
@@ -81,8 +71,7 @@ export const useControlStore = defineStore('control', () => {
   function loadMissionSequence(sequenceData: MissionSequenceFile) {
     sequenceData.events.sort((a, b) => a.time - b.time)
     missionSequenceFile.value = sequenceData
-    resetSimulation() // 这会调用 _broadcastState
-    // _broadcastState({ forceVideoSync: true }); // 确保加载新任务时视频配置被发送，并在重置后同步一次
+    resetSimulation()
   }
 
   function _checkEvents() {
@@ -91,7 +80,7 @@ export const useControlStore = defineStore('control', () => {
 
     const nextEvent = missionSequenceFile.value.events[_eventIndex.value]
     if (nextEvent && simulationTime.value >= nextEvent.time) {
-      currentEventNameKey.value = nextEvent.eventNameKey // Store the key
+      currentEventName.value = nextEvent.eventName // Use new property
       currentEventPayload.value = nextEvent.payload || null
       _eventIndex.value++
     }
@@ -102,7 +91,7 @@ export const useControlStore = defineStore('control', () => {
       return
     if (!missionSequenceFile.value) {
       // eslint-disable-next-line no-alert
-      alert(t('fileUploadError.noMissionLoaded')) // 假设你添加了这个i18n key
+      alert('请先加载任务时序文件')
       return
     }
     _initBroadcastChannel()
@@ -111,23 +100,20 @@ export const useControlStore = defineStore('control', () => {
     if (_intervalId.value)
       clearInterval(_intervalId.value)
 
-    // 首次开始时，强制同步一次视频时间 (此时 simulationTime 对应视频0秒)
     _broadcastState({ forceVideoSync: true })
 
     _intervalId.value = setInterval(() => {
       const deltaTime = SIMULATION_INTERVAL_MS / 1000
-      simulationTime.value += deltaTime // MET 正常递增
+      simulationTime.value += deltaTime
 
       if (simulationTime.value >= 0 && altitude.value === 0 && speed.value === 0 && !initialBoostDone.value) {
-        // 这是一个非常简化的方式来模拟初始推力，实际应该更复杂
-        altitude.value += SPEED_FACTOR * deltaTime * 0.5 // 模拟加速
+        altitude.value += SPEED_FACTOR * deltaTime * 0.5
         speed.value += SPEED_FACTOR * deltaTime * 2
         if (simulationTime.value > 2)
-          initialBoostDone.value = true // 假设初始推力阶段短
+          initialBoostDone.value = true
       }
       else if (simulationTime.value >= 0) {
         altitude.value += speed.value * deltaTime
-        // speed.value -= 9.8 * deltaTime; // 简单重力，如果没推力
       }
       else {
         altitude.value = 0
@@ -136,7 +122,6 @@ export const useControlStore = defineStore('control', () => {
       _checkEvents()
       _broadcastState()
     }, SIMULATION_INTERVAL_MS)
-    // _broadcastState({ forceVideoSync: true }); // 再次确保状态广播，isPlaying已经是true
   }
 
   function pauseSimulation() {
@@ -147,76 +132,58 @@ export const useControlStore = defineStore('control', () => {
       clearInterval(_intervalId.value)
       _intervalId.value = null
     }
-    _broadcastState() // isPlaying 为 false，syncVideoToTime 不会计算除非 forceVideoSync
+    _broadcastState()
   }
 
   function resetSimulation() {
     pauseSimulation()
-    initialBoostDone.value = false // 重置辅助状态
+    initialBoostDone.value = false
     const firstEventTime = missionSequenceFile.value?.events[0]?.time
     simulationTime.value = (firstEventTime !== undefined && firstEventTime < 0) ? firstEventTime : 0
 
     altitude.value = 0
     speed.value = 0
-    currentEventNameKey.value = null
+    currentEventName.value = null // Renamed
     currentEventPayload.value = null
     _eventIndex.value = 0
 
-    // 核心修改：设置 simulationTime，使其在视频0秒时对应任务的 videoStartTimeOffset
-    if (missionSequenceFile.value?.videoConfig?.type === 'local' && missionSequenceFile.value.videoConfig.startTimeOffset !== undefined) {
+    if (missionSequenceFile.value?.videoConfig?.type === 'local' && missionSequenceFile.value.videoConfig.startTimeOffset !== undefined)
       simulationTime.value = missionSequenceFile.value.videoConfig.startTimeOffset
-    }
-    else {
-      // 如果没有视频配置或不是本地视频，则默认重置到 T-0
-      // 或者你可以选择第一个事件的时间（如果为负）
-      const firstEventTime = missionSequenceFile.value?.events[0]?.time
+    else
       simulationTime.value = (firstEventTime !== undefined && firstEventTime < 0) ? firstEventTime : 0
-    }
 
     altitude.value = 0
     speed.value = 0
-    currentEventNameKey.value = null
+    currentEventName.value = null // Renamed
     currentEventPayload.value = null
     _eventIndex.value = 0
 
-    _primeCurrentEventBasedOnTime() // 新建一个辅助函数来处理
+    _primeCurrentEventBasedOnTime()
 
-    _broadcastState({ forceVideoSync: true }) // 强制视频同步到新的初始点
+    _broadcastState({ forceVideoSync: true })
     // eslint-disable-next-line no-console
     console.log(`Simulation reset. MET set to: ${simulationTime.value}s (video should be at 0s if local video exists)`)
   }
 
   function _primeCurrentEventBasedOnTime() {
-    currentEventNameKey.value = null // 先清除
+    currentEventName.value = null // Renamed
     if (!missionSequenceFile.value || !missionSequenceFile.value.events.length)
       return
 
-    // 找到第一个时间大于等于当前 simulationTime 的事件，或者最后一个已过的事件
-    let nextEventIndex = -1
-    let lastPassedEventKey: string | null = null
-
+    let lastPassedEvent: MissionEvent | null = null
     for (let i = 0; i < missionSequenceFile.value.events.length; i++) {
       const event = missionSequenceFile.value.events[i]
       if (event!.time <= simulationTime.value) {
-        lastPassedEventKey = event!.eventNameKey // 记录最后一个已发生或正在发生的事件
-        _eventIndex.value = i + 1 // 下一个事件的索引
+        lastPassedEvent = event!
+        _eventIndex.value = i + 1
       }
-      else if (nextEventIndex === -1) {
-        nextEventIndex = i // 第一个未到时间的事件
+      else {
+        break
       }
     }
 
-    // 如果 simulationTime 刚好是某个事件的时间，或者已超过，则 currentEventNameKey 应该是该事件
-    if (lastPassedEventKey) {
-      currentEventNameKey.value = lastPassedEventKey
-    }
-    // 如果所有事件都还没到，且 simulationTime 是负数（T- 状态），显示“即将进行”第一个事件
-    else if (nextEventIndex !== -1 && simulationTime.value < missionSequenceFile.value.events[nextEventIndex]!.time) {
-      // 这里可以考虑是否显示 "Upcoming"，或者让 display 页面处理
-      // 为简单起见，如果 simulationTime < 0 且有下一个事件，则可能是 Upcoming
-      // currentEventNameKey.value = missionSequenceFile.value.events[nextEventIndex].eventNameKey; // 或者不设置，让 display 根据 MET < 0 显示
-    }
-    // _eventIndex 已经被上面的循环正确设置了，指向下一个要检查的事件
+    if (lastPassedEvent)
+      currentEventName.value = lastPassedEvent.eventName
   }
 
   function seekSimulation(targetMET: number) {
@@ -227,7 +194,7 @@ export const useControlStore = defineStore('control', () => {
       pauseSimulation()
 
     simulationTime.value = targetMET
-    _primeCurrentEventBasedOnTime() // 使用新函数更新事件状态
+    _primeCurrentEventBasedOnTime()
     _broadcastState({ forceVideoSync: true })
     if (wasPlaying)
       startSimulation()
@@ -235,7 +202,7 @@ export const useControlStore = defineStore('control', () => {
 
   function initialize() {
     _initBroadcastChannel()
-    _broadcastState({ forceVideoSync: false }) // 发送包含默认样式在内的初始状态
+    _broadcastState({ forceVideoSync: false })
   }
 
   function dispose() {
@@ -243,12 +210,7 @@ export const useControlStore = defineStore('control', () => {
     _closeBroadcastChannel()
   }
 
-  watch(locale, () => {
-    // 当语言变化时，如果任务已加载，重新广播状态以更新翻译后的mission/vehicle name
-    if (missionSequenceFile.value) {
-      _broadcastState({ forceVideoSync: isPlaying.value }) // 如果在播放，也同步视频
-    }
-  })
+  // watch(locale, ...) // REMOVED
 
   return {
     simulationTime,
@@ -256,11 +218,11 @@ export const useControlStore = defineStore('control', () => {
     speed,
     isPlaying,
     missionSequenceFile,
-    currentEventNameKey,
+    currentEventName, // Renamed
     currentEventPayload,
     loadedMissionName,
     loadedVehicleName,
-    selectedDashboardStyle, // 暴露给 control.vue 读取
+    selectedDashboardStyle,
     loadMissionSequence,
     startSimulation,
     pauseSimulation,
@@ -268,6 +230,6 @@ export const useControlStore = defineStore('control', () => {
     seekSimulation,
     initialize,
     dispose,
-    setDashboardStyle, // 暴露给 control.vue 调用
+    setDashboardStyle,
   }
 })

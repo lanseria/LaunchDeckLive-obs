@@ -1,4 +1,4 @@
-import { pwa } from './app/config/pwa'
+// import { pwa } from './app/config/pwa'
 import { appDescription } from './app/constants/index'
 
 export default defineNuxtConfig({
@@ -7,9 +7,7 @@ export default defineNuxtConfig({
     '@unocss/nuxt',
     '@pinia/nuxt',
     '@nuxtjs/color-mode',
-    '@vite-pwa/nuxt',
     '@nuxt/eslint',
-    '@nuxtjs/i18n',
   ],
   ssr: false,
 
@@ -60,11 +58,6 @@ export default defineNuxtConfig({
         target: 'esnext',
       },
     },
-    prerender: {
-      crawlLinks: false,
-      routes: ['/'],
-      ignore: ['/control'],
-    },
   },
 
   vite: {
@@ -83,27 +76,5 @@ export default defineNuxtConfig({
       },
     },
   },
-  i18n: {
-    locales: [
-      {
-        code: 'zh',
-        iso: 'zh-CN',
-        name: '中文',
-        file: 'zh.json', // We'll create this file
-      },
-      {
-        code: 'en',
-        iso: 'en-US',
-        name: 'English',
-        file: 'en.json', // We'll create this file
-      },
-    ],
-    defaultLocale: 'zh', // Default language
-    lazy: true, // Load locale files lazily
-    langDir: 'lang/', // Directory for locale files
-    strategy: 'no_prefix', // Or 'prefix_except_default' etc. if you want lang in URL
-    vueI18n: './i18n.config.ts', // for v9 options
-  },
-
-  pwa,
+  // pwa,
 })

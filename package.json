@@ -20,7 +20,6 @@
     "@nuxt/devtools": "^2.5.0",
     "@nuxt/eslint": "catalog:build",
     "@nuxtjs/color-mode": "catalog:build",
-    "@nuxtjs/i18n": "^9.5.5",
     "@pinia/nuxt": "catalog:build",
     "@types/node": "^24.0.1",
     "@unocss/eslint-config": "catalog:build",

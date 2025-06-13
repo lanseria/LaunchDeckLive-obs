@@ -5,15 +5,11 @@ declare global {
   // 定义可选的仪表盘样式
   type DashboardStyle = 'SpaceXFalcon9' | 'SpaceLen1'
 
-  interface MultilingualName {
-    en: string
-    zh: string
-    [key: string]: string // Allow other languages if needed
-  }
+  // MultilingualName interface is removed.
 
   interface MissionEvent {
     time: number
-    eventNameKey: string // Now a key for i18n
+    eventName: string // Changed from eventNameKey
     payload?: Record<string, any>
   }
 
@@ -25,8 +21,8 @@ declare global {
   }
 
   interface MissionSequenceFile {
-    missionName: MultilingualName
-    vehicle: MultilingualName
+    missionName: string // Changed from MultilingualName
+    vehicle: string // Changed from MultilingualName
     videoConfig?: VideoConfig // 可选的视频配置
     events: MissionEvent[]
   }
@@ -36,13 +32,13 @@ declare global {
     simulationTime: number
     altitude: number
     speed: number
-    currentEventNameKey: string | null
+    currentEventName: string | null // Changed from currentEventNameKey
     currentEventPayload?: Record<string, any> | null
     isPlaying: boolean
     selectedDashboardStyle: DashboardStyle
     allEvents: MissionEvent[]
-    missionName: string // 通常是已翻译的
-    vehicleName: string // 通常是已翻译的
+    missionName: string
+    vehicleName: string
     videoConfig?: VideoConfig
     syncVideoToTime?: number
   }

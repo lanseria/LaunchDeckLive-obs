@@ -1,247 +1,259 @@
 <script setup lang="ts">
-import type { DashboardStyle } from '~/composables/store/control' // 假设你的 store 路径是这样
-import { useI18n } from '#imports' // Auto-imported
-import { useControlStore } from '~/composables/store/control'
+import { useDisplayStore } from '~/composables/store/display'
 
-const controlStore = useControlStore()
-const fileError = ref<string | null>(null)
-const { t, locale, locales, setLocale } = useI18n()
+// 动态导入仪表盘组件
+const SpaceXFalcon9Dashboard = defineAsyncComponent(() => import('~/components/Dashboards/SpaceXFalcon9.vue'))
+const SpaceLen1Dashboard = defineAsyncComponent(() => import('~/components/Dashboards/SpaceLen1.vue'))
 
-// Type for locales from useI18n to ensure correct structure
-interface I18nLocale {
-  code: string
-  name?: string
-  // Add other properties if your locale objects have them (iso, file, etc.)
-}
-const availableLocales = computed(() => (locales.value as I18nLocale[]).filter(i => i.code))
-// 仪表盘样式选项
-const dashboardStyles: { labelKey: string, value: DashboardStyle }[] = [
-  { labelKey: 'dashboardStyle.spacexFalcon9', value: 'SpaceXFalcon9' },
-  { labelKey: 'dashboardStyle.spaceLen1', value: 'SpaceLen1' },
-]
+const displayStore = useDisplayStore()
+const hasReceivedOnce = ref(false)
+const videoRef = useTemplateRef('videoRef')
+const showPlayButton = ref(false)
 
-const currentSelectedStyle = ref<DashboardStyle>(controlStore.selectedDashboardStyle)
+const currentDashboardComponent = shallowRef<any>(SpaceLen1Dashboard)
 
-// 新增：用于存储跳转时间的 ref
-const seekTimeInput = ref<string>('') // 使用字符串以便输入框处理
-const seekError = ref<string | null>(null)
+const isSeeking = ref(false)
+let seekingTimeoutId: NodeJS.Timeout | null = null
+const SYNC_TOLERANCE = 0.75
+const SEEK_TIMEOUT_MS = 2000
+let onCanPlayHandler: (() => void) | null = null
 
-watch(currentSelectedStyle, (newStyle) => {
-  controlStore.setDashboardStyle(newStyle)
-})
-// 如果 store 中的值通过其他方式改变（不太可能在这个场景，但作为同步机制）
-watch(() => controlStore.selectedDashboardStyle, (storeStyle) => {
-  if (currentSelectedStyle.value !== storeStyle) {
-    currentSelectedStyle.value = storeStyle
+onMounted(() => {
+  displayStore.initialize()
+  if (videoRef.value) {
+    videoRef.value.addEventListener('seeked', handleVideoSeeked)
+    videoRef.value.addEventListener('error', handleVideoError)
+    videoRef.value.addEventListener('stalled', handleVideoStalled)
+    videoRef.value.addEventListener('waiting', handleVideoWaiting)
   }
 })
 
-function handleFileUpload(event: Event) {
-  const target = event.target as HTMLInputElement
-  const file = target.files?.[0]
-  fileError.value = null
+onBeforeUnmount(() => {
+  displayStore.dispose()
+  if (videoRef.value) {
+    videoRef.value.pause()
+    videoRef.value.removeEventListener('seeked', handleVideoSeeked)
+    videoRef.value.removeEventListener('error', handleVideoError)
+    videoRef.value.removeEventListener('stalled', handleVideoStalled)
+    videoRef.value.removeEventListener('waiting', handleVideoWaiting)
+    if (onCanPlayHandler) {
+      videoRef.value.removeEventListener('canplay', onCanPlayHandler)
+      onCanPlayHandler = null
+    }
+    videoRef.value.removeAttribute('src')
+    videoRef.value.load()
+  }
+  if (seekingTimeoutId)
+    clearTimeout(seekingTimeoutId)
+})
 
-  if (file) {
-    if (file.type === 'application/json') {
-      const reader = new FileReader()
-      reader.onload = (e) => {
-        try {
-          const content = e.target?.result
-          if (typeof content === 'string') {
-            const jsonData = JSON.parse(content)
-            if (jsonData
-              && typeof jsonData.missionName === 'object' // Check for new structure
-              && typeof jsonData.vehicle === 'object'
-              && Array.isArray(jsonData.events)
-              && jsonData.events.every((ev: any) => typeof ev.time === 'number' && typeof ev.eventNameKey === 'string') // Check for eventNameKey
-            ) {
-              controlStore.loadMissionSequence(jsonData)
-            }
-            else {
-              fileError.value = t('fileUploadError.invalidStructure')
-              target.value = ''
+function handleVideoSeeked() {
+  isSeeking.value = false
+  if (seekingTimeoutId)
+    clearTimeout(seekingTimeoutId)
+  seekingTimeoutId = null
+  if (displayStore.telemetry.isPlaying && videoRef.value?.paused)
+    playVideoWithSound()
+}
+
+function handleVideoError(event: Event) {
+  console.error('[VIDEO EVENT] Video Error:', event, videoRef.value?.error)
+  isSeeking.value = false
+  if (seekingTimeoutId)
+    clearTimeout(seekingTimeoutId)
+  showPlayButton.value = false
+}
+
+function handleVideoStalled() {
+  console.warn('[VIDEO EVENT] Video stalled')
+}
+function handleVideoWaiting() {
+  console.warn('[VIDEO EVENT] Video waiting for data (buffering)')
+}
+
+async function playVideoWithSound() {
+  if (!videoRef.value || !displayStore.telemetry.videoConfig?.source)
+    return
+
+  try {
+    showPlayButton.value = false
+    await videoRef.value.play()
+  }
+  catch (error: any) {
+    console.error('[VIDEO CONTROL] Video play failed:', error.name, error.message)
+    if (error.name === 'NotAllowedError' || error.name === 'NotSupportedError')
+      showPlayButton.value = true
+  }
+}
+
+function pauseVideo() {
+  if (videoRef.value) {
+    videoRef.value.pause()
+    showPlayButton.value = false
+  }
+}
+
+function seekVideo(targetTime: number) {
+  if (!videoRef.value || isSeeking.value || videoRef.value.readyState === 0)
+    return
+
+  if (Math.abs(videoRef.value.currentTime - targetTime) <= SYNC_TOLERANCE)
+    return
+
+  isSeeking.value = true
+  videoRef.value.currentTime = targetTime
+
+  if (seekingTimeoutId)
+    clearTimeout(seekingTimeoutId)
+  seekingTimeoutId = setTimeout(() => {
+    if (isSeeking.value) {
+      console.warn(`[VIDEO CONTROL] Seek to ${targetTime} timed out. Resetting seeking flag.`)
+      isSeeking.value = false
+    }
+  }, SEEK_TIMEOUT_MS)
+}
+
+watch(() => displayStore.telemetry.selectedDashboardStyle, (newStyle) => {
+  if (newStyle === 'SpaceXFalcon9')
+    currentDashboardComponent.value = SpaceXFalcon9Dashboard
+  else if (newStyle === 'SpaceLen1')
+    currentDashboardComponent.value = SpaceLen1Dashboard
+  else
+    currentDashboardComponent.value = SpaceLen1Dashboard
+}, { immediate: true })
+
+watch(() => displayStore.telemetry.isPlaying, (newIsPlaying) => {
+  if (displayStore.telemetry.videoConfig?.type === 'local') {
+    if (newIsPlaying)
+      playVideoWithSound()
+    else
+      pauseVideo()
+  }
+})
+
+watch(() => displayStore.telemetry.syncVideoToTime, (newVideoTime) => {
+  if (displayStore.telemetry.videoConfig?.type === 'local' && newVideoTime !== undefined) {
+    if (videoRef.value) {
+      if (videoRef.value.readyState > 0) {
+        seekVideo(newVideoTime)
+      }
+      else if (newVideoTime > 0) {
+        if (onCanPlayHandler && videoRef.value)
+          videoRef.value.removeEventListener('canplay', onCanPlayHandler)
+
+        onCanPlayHandler = () => {
+          if (videoRef.value && newVideoTime !== undefined) {
+            seekVideo(newVideoTime)
+            if (onCanPlayHandler && videoRef.value) {
+              videoRef.value.removeEventListener('canplay', onCanPlayHandler)
+              onCanPlayHandler = null
             }
           }
         }
-        catch (error) {
-          console.error('Error parsing JSON file:', error)
-          fileError.value = t('fileUploadError.parseError')
-          target.value = ''
-        }
+        videoRef.value.addEventListener('canplay', onCanPlayHandler)
       }
-      reader.onerror = () => {
-        fileError.value = t('fileUploadError.readError')
-        target.value = ''
-      }
-      reader.readAsText(file)
-    }
-    else {
-      fileError.value = t('fileUploadError.invalidType')
-      target.value = ''
     }
   }
-}
-
-function getTranslatedEventName(key: string | null): string {
-  if (!key)
-    return t('noEvent')
-  // For upcoming events before T-0
-  if (controlStore.simulationTime < 0 && missionHasStartedButBeforeT0()) {
-    // Check if this key is the *first* event in the sequence
-    const firstEventKey = controlStore.missionSequenceFile?.events[0]?.eventNameKey
-    if (key === firstEventKey) {
-      return t('upcomingEventPrefix') + t(key)
-    }
-  }
-  return t(key)
-}
-
-function missionHasStartedButBeforeT0(): boolean {
-  return controlStore.missionSequenceFile !== null && controlStore.simulationTime < 0
-}
-
-function handleSeek() {
-  seekError.value = null
-  if (!controlStore.missionSequenceFile) {
-    seekError.value = t('seekError.noMission') // i18n: "请先加载任务时序"
-    return
-  }
-
-  const time = Number.parseFloat(seekTimeInput.value)
-  if (Number.isNaN(time)) {
-    seekError.value = t('seekError.invalidNumber') // i18n: "请输入有效的数字"
-    return
-  }
-
-  controlStore.seekSimulation(time)
-  // seekTimeInput.value = ""; // 可选：跳转后清空输入框
-}
-
-onMounted(() => {
-  controlStore.initialize()
-  currentSelectedStyle.value = controlStore.selectedDashboardStyle // 初始化本地 ref
 })
 
-onUnmounted(() => {
-  controlStore.dispose()
-})
+watch(() => displayStore.telemetry.videoConfig?.source, (newSource, oldSource) => {
+  if (videoRef.value) {
+    if (newSource && newSource !== oldSource) {
+      const newFullSourcePath = window.location.origin + newSource
+      if (videoRef.value.currentSrc !== newFullSourcePath || !videoRef.value.hasAttribute('src')) {
+        videoRef.value.src = newSource
+        videoRef.value.load()
+        isSeeking.value = false
+        if (seekingTimeoutId)
+          clearTimeout(seekingTimeoutId)
+        showPlayButton.value = false
+      }
+    }
+    else if (!newSource && oldSource) {
+      videoRef.value.pause()
+      videoRef.value.removeAttribute('src')
+      videoRef.value.load()
+      isSeeking.value = false
+      if (seekingTimeoutId)
+        clearTimeout(seekingTimeoutId)
+      showPlayButton.value = false
+    }
+  }
+}, { immediate: false })
+
+watch(() => [
+  displayStore.telemetry.simulationTime,
+  displayStore.telemetry.altitude,
+  displayStore.telemetry.speed,
+  displayStore.telemetry.isPlaying,
+  displayStore.telemetry.currentEventName,
+  displayStore.isConnected,
+], (newValues) => {
+  const newIsConnected = newValues[5]
+  if (!hasReceivedOnce.value && newIsConnected && (newValues[0] !== 0 || newValues[1] !== 0 || newValues[2] !== 0 || newValues[3] || newValues[4] !== null))
+    hasReceivedOnce.value = true
+
+  if (!newIsConnected)
+    hasReceivedOnce.value = false
+}, { deep: true, immediate: true })
 </script>
 
 <template>
-  <div class="font-sans p-8">
-    <!-- 标题和语言/深色模式切换 -->
-    <div class="mb-6 flex items-center justify-between">
-      <h1 class="text-3xl font-bold">
-        {{ t('controlPanelTitle') }}
-      </h1>
-      <div class="flex items-center space-x-4">
-        <div class="flex items-center">
-          <label for="locale-select" class="text-sm text-gray-600 mr-2 dark:text-gray-300">{{ t('language') }}:</label>
-          <select id="locale-select" v-model="locale" class="focus:outline-none text-gray-900 p-2 border border-gray-300 rounded bg-white dark:text-gray-100 dark:border-gray-600 dark:bg-gray-700 focus:ring-2 focus:ring-blue-500" @change="setLocale($event.target.value)">
-            <option v-for="loc in availableLocales" :key="loc.code" :value="loc.code">
-              {{ loc.name || loc.code }}
-            </option>
-          </select>
-        </div>
-        <DarkToggle />
-      </div>
-    </div>
-    <!-- 任务时序加载 -->
-    <div class="mb-6 p-4 border border-gray-300 rounded">
-      <h2 class="text-xl font-semibold mb-2">
-        {{ t('missionSequence') }}
-      </h2>
-      <input type="file" accept=".json" class="mb-2" @change="handleFileUpload">
-      <p>{{ t('loadMission') }} <span class="font-bold">{{ controlStore.loadedMissionName }}</span></p>
-      <p>{{ t('vehicle') }} <span class="font-bold">{{ controlStore.loadedVehicleName }}</span></p>
-      <div v-if="fileError" class="text-red-500">
-        {{ fileError }}
-      </div>
-    </div>
-
-    <!-- 新增：仪表盘样式选择 -->
-    <div class="mb-6 p-4 border border-gray-300 rounded dark:border-gray-600">
-      <h2 class="text-xl font-semibold mb-2">
-        {{ t('dashboardStyle.selectTitle') }}
-      </h2>
-      <select
-        v-model="currentSelectedStyle"
-        class="focus:outline-none text-gray-900 p-2 border border-gray-300 rounded bg-white w-full dark:text-gray-100 dark:border-gray-600 dark:bg-gray-700 focus:ring-2 focus:ring-blue-500"
+  <Adapter>
+    <div class="bg-black h-full w-full relative overflow-hidden">
+      <video
+        ref="videoRef"
+        key="launch-video"
+        playsinline
+        class="h-full w-full left-0 top-0 absolute z-0 object-cover"
+        preload="auto"
+        @loadedmetadata="() => {
+          if (displayStore.telemetry.syncVideoToTime !== undefined && videoRef && displayStore.telemetry.videoConfig?.type === 'local') {
+            const initialSyncTime = Math.max(0, displayStore.telemetry.syncVideoToTime);
+            if (Math.abs(videoRef!.currentTime - initialSyncTime) > SYNC_TOLERANCE) {
+              isSeeking = false;
+              seekVideo(initialSyncTime);
+            }
+          }
+          if (displayStore.telemetry.isPlaying && videoRef?.paused) {
+            playVideoWithSound();
+          }
+        }"
+        @error="handleVideoError"
+        @seeked="handleVideoSeeked"
+        @stalled="handleVideoStalled"
+        @waiting="handleVideoWaiting"
       >
-        <option v-for="style in dashboardStyles" :key="style.value" :value="style.value">
-          {{ t(style.labelKey) }}
-        </option>
-      </select>
-    </div>
-    <!-- 控制按钮 -->
-    <div class="mb-6 gap-4 grid grid-cols-3">
-      <button
-        :disabled="controlStore.isPlaying || !controlStore.missionSequenceFile"
-        class="text-white px-4 py-2 rounded bg-green-500 hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed"
-        @click="controlStore.startSimulation"
+        Your browser does not support the video tag.
+      </video>
+      <div
+        v-if="showPlayButton"
+        class="bg-black bg-opacity-50 flex flex-col cursor-pointer items-center inset-0 justify-center absolute z-20"
+        @click="playVideoWithSound"
       >
-        {{ t('start') }}
-      </button>
-      <button
-        :disabled="!controlStore.isPlaying"
-        class="text-white px-4 py-2 rounded bg-yellow-500 hover:bg-yellow-600 disabled:opacity-50"
-        @click="controlStore.pauseSimulation"
-      >
-        {{ t('pause') }}
-      </button>
-      <button
-        :disabled="!controlStore.missionSequenceFile"
-        class="text-white px-4 py-2 rounded bg-red-500 hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
-        @click="controlStore.resetSimulation"
-      >
-        {{ t('reset') }}
-      </button>
-    </div>
-    <!-- 新增：快速跳转功能区域 -->
-    <div class="mb-6 p-4 border border-gray-300 rounded dark:border-gray-600">
-      <h2 class="text-xl font-semibold mb-2">
-        {{ t('seekSimulation.title') }}
-      </h2>
-      <div class="flex items-center space-x-2">
-        <input
-          v-model="seekTimeInput"
-          type="number"
-          step="any"
-          class="focus:outline-none text-gray-900 p-2 border border-gray-300 rounded bg-white flex-grow dark:text-gray-100 dark:border-gray-600 dark:bg-gray-700 focus:ring-2 focus:ring-blue-500"
-          :placeholder="t('seekSimulation.placeholder')"
-          @keyup.enter="handleSeek"
-        >
-        <button
-          :disabled="!controlStore.missionSequenceFile"
-          class="text-white px-4 py-2 rounded bg-blue-500 hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
-          @click="handleSeek"
-        >
-          {{ t('seekSimulation.button') }}
-        </button>
+        <svg class="text-white opacity-80 h-16 w-16 transition-opacity hover:opacity-100 md:h-24 md:w-24" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd" /></svg>
+        <p class="text-lg text-white mt-2 md:text-xl">
+          点击播放视频
+        </p>
       </div>
-      <div v-if="seekError" class="text-sm text-red-500 mt-2">
-        {{ seekError }}
+      <component
+        :is="currentDashboardComponent"
+        v-if="displayStore.isConnected"
+        :telemetry="displayStore.telemetry"
+        :has-received-once="hasReceivedOnce"
+      />
+      <div v-else class="flex items-center inset-0 justify-center absolute z-10">
+        <p class="text-xl text-yellow-400 font-mono">
+          等待来自控制面板的数据...
+        </p>
+      </div>
+      <div class="text-xs text-gray-500 opacity-70 transition-opacity bottom-1 right-2 absolute z-20 hover:opacity-100">
+        请确保
+        <NuxtLink to="/" target="_blank" class="text-blue-400 hover:underline">
+          控制面板
+        </NuxtLink>
+        已打开并运行。
       </div>
     </div>
-    <!-- 当前模拟状态 -->
-    <div class="p-4 border border-gray-300 rounded">
-      <h2 class="text-xl font-semibold mb-2">
-        {{ t('simulationState') }}
-      </h2>
-      <p>{{ t('status') }} <span class="font-bold" :class="controlStore.isPlaying ? 'text-green-600' : 'text-red-600'">{{ controlStore.isPlaying ? t('playing') : t('pausedStopped') }}</span></p>
-      <p>{{ t('met') }} (T{{ controlStore.simulationTime < 0 ? '' : '+' }}): <span class="font-bold">{{ Math.abs(controlStore.simulationTime).toFixed(1) }} s</span></p>
-      <p>{{ t('altitude') }}: <span class="font-bold">{{ controlStore.altitude.toFixed(0) }} m</span></p>
-      <p>{{ t('speed') }}: <span class="font-bold">{{ controlStore.speed.toFixed(0) }} m/s</span></p>
-      <p>{{ t('currentEvent') }} <span class="text-blue-500 font-bold">{{ getTranslatedEventName(controlStore.currentEventNameKey) }}</span></p>
-      <div v-if="controlStore.currentEventPayload">
-        {{ t('eventData') }} <pre class="text-sm p-2 rounded">{{ controlStore.currentEventPayload }}</pre>
-      </div>
-    </div>
-    <p class="text-sm text-gray-500 mt-4">
-      {{ t('openDisplayPage', [t('displayPageLinkText')]) }}
-      <NuxtLink to="/" target="_blank" class="text-blue-500 hover:underline">
-        {{ t('displayPageLinkText') }}
-      </NuxtLink>
-    </p>
-  </div>
+  </Adapter>
 </template>

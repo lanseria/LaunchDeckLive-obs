@@ -6,15 +6,15 @@ export const useDisplayStore = defineStore('display', {
       simulationTime: 0,
       altitude: 0,
       speed: 0,
-      currentEventNameKey: null, // Store the key
+      currentEventName: null, // Renamed from currentEventNameKey
       currentEventPayload: null,
       isPlaying: false,
       missionName: '',
       vehicleName: '',
-      videoConfig: undefined, // 初始化
-      syncVideoToTime: undefined, // 初始化
-      allEvents: [], // 初始化为空数组
-      selectedDashboardStyle: 'SpaceLen1', // 与 controlStore 默认值一致
+      videoConfig: undefined,
+      syncVideoToTime: undefined,
+      allEvents: [],
+      selectedDashboardStyle: 'SpaceLen1',
     } as TelemetryData,
     _broadcastChannel: null as BroadcastChannel | null,
     isConnected: false,
@@ -23,18 +23,16 @@ export const useDisplayStore = defineStore('display', {
   actions: {
     _initBroadcastChannel() {
       if (import.meta.client && !this._broadcastChannel) {
-        this._broadcastChannel = new BroadcastChannel(LAUNCHDECK_CHANNEL_NAME) // Ensure same name
+        this._broadcastChannel = new BroadcastChannel(LAUNCHDECK_CHANNEL_NAME)
         this._broadcastChannel.onmessage = (event) => {
           const data = event.data as TelemetryData
-          // console.log('[DISPLAY] Received broadcast. New videoConfig.source:', data.videoConfig?.source)
-          this.telemetry = { ...data } // 更新所有数据
-          // console.log("Display received:", data); // 调试用
+          this.telemetry = { ...data }
           if (!this.isConnected)
             this.isConnected = true
         }
         this._broadcastChannel.onmessageerror = (event) => {
           console.error('DisplayStore: BroadcastChannel error', event)
-          this.isConnected = false // Assume connection lost on error
+          this.isConnected = false
         }
         // eslint-disable-next-line no-console
         console.log('DisplayStore: BroadcastChannel initialized and listening')
