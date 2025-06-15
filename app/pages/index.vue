@@ -66,7 +66,7 @@ onUnmounted(controlStore.dispose)
       <h1 class="text-2xl font-bold md:text-3xl">
         LaunchDeck - 控制面板
       </h1>
-      <DarkToggle />
+      <Footer />
     </div>
 
     <div class="grid grid-cols-1 gap-8 lg:grid-cols-2">

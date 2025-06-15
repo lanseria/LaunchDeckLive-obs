@@ -16,6 +16,7 @@
   "devDependencies": {
     "@antfu/eslint-config": "catalog:dev",
     "@iconify-json/carbon": "catalog:icons",
+    "@iconify-json/simple-icons": "catalog:icons",
     "@iconify-json/twemoji": "catalog:icons",
     "@nuxt/devtools": "^2.5.0",
     "@nuxt/eslint": "catalog:build",

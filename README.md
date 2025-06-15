@@ -16,9 +16,9 @@
 
 <!-- 强烈建议在此处替换为项目的动态 GIF 或视频截图 -->
 <p align="center">
-  <img src="https://user-images.githubusercontent.com/11247099/140462375-7b7ac4db-35b7-453c-8a05-13d8d20282c4.png" width="800"/>
+  <img src="./public/preview.png" width="800"/>
   <br/>
-  <em>（请替换为您的项目实际运行截图或GIF）</em>
+  <em>https://launch-deck-video.netlify.app/</em>
 </p>
 
 ---
