@@ -71,7 +71,6 @@ onUnmounted(controlStore.dispose)
 
     <div class="grid grid-cols-1 gap-8 lg:grid-cols-2">
       <div class="flex flex-col space-y-6">
-        <!-- 控制选项... -->
         <div class="border border-gray-300 rounded p-4 dark:border-gray-600">
           <h2 class="mb-2 text-xl font-semibold">
             任务时序
@@ -136,7 +135,7 @@ onUnmounted(controlStore.dispose)
           <p>状态: <span class="font-bold" :class="controlStore.isPlaying ? 'text-green-600' : 'text-red-600'">{{ controlStore.isPlaying ? '运行中' : '暂停/停止' }}</span></p>
           <p>任务时间: <span class="font-bold">{{ controlStore.simulationTime.toFixed(2) }} s</span></p>
           <p>高度 (KM): <span class="font-bold">{{ controlStore.altitude.toFixed(1) }}</span></p>
-          <p>速度 (KM/H): <span class="font-bold">{{ controlStore.speed }}</span></p>
+          <p>速度 (KM/H): <span class="font-bold">{{ controlStore.speed.toFixed(0) }}</span></p>
         </div>
       </div>
 
@@ -145,13 +144,11 @@ onUnmounted(controlStore.dispose)
           <h2 class="text-xl font-semibold">
             显示效果预览 (已静音)
           </h2>
-          <!-- 关键修改点 2: 确保链接不带 mute 参数 -->
           <NuxtLink to="/control" target="_blank" class="text-sm text-blue-500 hover:underline">
             在新窗口打开 (有声)
           </NuxtLink>
         </div>
         <div class="relative aspect-video w-full overflow-hidden rounded-lg bg-black shadow-lg">
-          <!-- 关键修改点 1: iframe 的 src 添加 ?mute=1 -->
           <iframe
             src="/control?mute=1"
             title="Display Preview"

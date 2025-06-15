@@ -1,9 +1,26 @@
 declare global {
   type DashboardStyle = 'SpaceXFalcon9'
 
+  // 新增: 事件中的遥测数据快照
+  interface EventTelemetry {
+    speed_kmh?: number
+    altitude_km?: number
+  }
+
+  // 新增: 事件中的显示信息
+  interface EventDisplayInfo {
+    title?: string
+    line1?: string
+    line2?: string
+    line3?: string
+  }
+
+  // 任务事件结构
   interface MissionEvent {
     time: number
-    name: string // 确保这里是 'name'
+    name: string
+    telemetry?: EventTelemetry // 可选的遥测数据
+    displayInfo?: EventDisplayInfo // 可选的显示信息
   }
 
   interface VideoConfig {
@@ -12,24 +29,15 @@ declare global {
     startTimeOffset?: number
   }
 
+  // 统一的任务文件格式
   interface MissionSequenceFile {
     missionName: string
     vehicle: string
     videoConfig?: VideoConfig
     events: MissionEvent[]
-    speed?: number
-    altitude?: number
-    maxQTitle?: string
-    maxQLine1?: string
-    maxQLine2?: string
-    maxQLine3?: string
   }
 
-  interface AltitudePoint {
-    time: number
-    altitude: number
-  }
-
+  // 核心遥测数据结构 (用于广播)
   interface TelemetryData {
     simulationTime: number
     timerClock: string
@@ -38,15 +46,21 @@ declare global {
     vehicleName: string
     videoConfig?: VideoConfig
     syncVideoToTime?: number
+
+    // --- 实时计算出的遥测数据 ---
     altitude_km: number
     speed_kmh: number
+
+    // --- 时间轴 UI 数据 ---
     timestamps: number[]
-    nodeNames: string[] // 这个将包含正确的名称
+    nodeNames: string[]
     missionDuration: number
-    maxQTitle: string
-    maxQLine1: string
-    maxQLine2: string
-    maxQLine3: string
+
+    // --- 右下角显示信息 ---
+    displayTitle: string
+    displayLine1: string
+    displayLine2: string
+    displayLine3: string
   }
 }
 

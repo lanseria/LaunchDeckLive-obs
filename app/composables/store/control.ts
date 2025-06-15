@@ -1,5 +1,3 @@
-/* eslint-disable no-console */
-import { useStorage } from '@vueuse/core'
 import { LAUNCHDECK_CHANNEL_NAME } from '../utils/constants'
 
 export const useControlStore = defineStore('control', () => {
@@ -9,7 +7,6 @@ export const useControlStore = defineStore('control', () => {
   const isStarted = ref(false)
   const isPaused = ref(false)
   const currentTimeOffset = ref(0)
-  const altitudeProfile = useStorage<AltitudePoint[]>('spacex_altitude_profile_v3', [])
 
   // --- 私有计时器和通信变量 ---
   let _timerIntervalId: ReturnType<typeof setInterval> | null = null
@@ -17,8 +14,44 @@ export const useControlStore = defineStore('control', () => {
   let _pauseTimeMs: number | null = null
   const _broadcastChannel = ref<BroadcastChannel | null>(null)
 
-  // --- 新增：用于缓存最后一次发送的状态 ---
-  let _lastBroadcastedData: TelemetryData | null = null
+  // --- 关键修改点 1: 新增状态和定时器ID来管理临时显示信息 ---
+  const activeDisplayInfo = ref<EventDisplayInfo>({})
+  let _displayInfoTimeoutId: ReturnType<typeof setTimeout> | null = null
+  const DISPLAY_INFO_DURATION_MS = 5000 // 信息显示 5 秒
+
+  // --- 计算属性 ---
+  const telemetryNodes = computed(() =>
+    missionData.value?.events.filter(e => e.telemetry).sort((a, b) => a.time - b.time) ?? [],
+  )
+
+  // 这个计算属性不再直接用于广播，而是用于检测
+  const displayInfoNodes = computed(() =>
+    missionData.value?.events.filter(e => e.displayInfo).sort((a, b) => a.time - b.time) ?? [],
+  )
+
+  const getInterpolatedValue = (nodes: MissionEvent[], valueKey: 'speed_kmh' | 'altitude_km'): number => {
+    if (nodes.length === 0)
+      return 0
+    const targetTime = currentTimeOffset.value
+    if (targetTime <= nodes[0]!.time)
+      return nodes[0]!.telemetry![valueKey] ?? 0
+    if (targetTime >= nodes[nodes.length - 1]!.time)
+      return nodes[nodes.length - 1]!.telemetry![valueKey] ?? 0
+    for (let i = 0; i < nodes.length - 1; i++) {
+      const prev = nodes[i]!; const next = nodes[i + 1]!
+      if (targetTime >= prev.time && targetTime <= next.time) {
+        const prevValue = prev.telemetry![valueKey] ?? 0; const nextValue = next.telemetry![valueKey] ?? 0
+        if (prev.time === next.time)
+          return prevValue
+        const ratio = (targetTime - prev.time) / (next.time - prev.time)
+        return prevValue + (nextValue - prevValue) * ratio
+      }
+    }
+    return nodes[nodes.length - 1]!.telemetry![valueKey] ?? 0
+  }
+
+  const currentAltitude = computed(() => getInterpolatedValue(telemetryNodes.value, 'altitude_km'))
+  const currentSpeed = computed(() => getInterpolatedValue(telemetryNodes.value, 'speed_kmh'))
 
   const initialCountdownOffset = computed(() => {
     if (missionData.value?.videoConfig?.type === 'local' && missionData.value.videoConfig.startTimeOffset !== undefined)
@@ -27,57 +60,12 @@ export const useControlStore = defineStore('control', () => {
     return firstNegativeEventTime ?? -60
   })
 
-  const currentAltitude = computed(() => {
-    const profile = altitudeProfile.value
-    if (!profile || profile.length === 0)
-      return missionData.value?.altitude ?? 0
-
-    const sortedProfile = [...profile].sort((a, b) => a.time - b.time)
-    const targetTime = currentTimeOffset.value
-
-    if (sortedProfile.length === 0)
-      return 0
-    if (targetTime <= sortedProfile[0]!.time)
-      return sortedProfile[0]!.altitude
-    if (targetTime >= sortedProfile[sortedProfile.length - 1]!.time)
-      return sortedProfile[sortedProfile.length - 1]!.altitude
-
-    for (let i = 0; i < sortedProfile.length - 1; i++) {
-      const prev = sortedProfile[i]!; const next = sortedProfile[i + 1]!
-      if (targetTime >= prev.time && targetTime <= next.time) {
-        if (prev.time === next.time)
-          return prev.altitude
-        const ratio = (targetTime - prev.time) / (next.time - prev.time)
-        return Number.parseFloat((prev.altitude + (next.altitude - prev.altitude) * ratio).toFixed(1))
-      }
-    }
-    return missionData.value?.altitude ?? 0
-  })
-
-  // --- 关键修改点 1: 在初始化时添加消息监听器 ---
-  function _initBroadcastChannel() {
-    if (import.meta.client && !_broadcastChannel.value) {
+  // --- 核心方法 ---
+  function _initBroadcastChannel() { /* ... 保持不变 ... */
+    if (import.meta.client && !_broadcastChannel.value)
       _broadcastChannel.value = new BroadcastChannel(LAUNCHDECK_CHANNEL_NAME)
-
-      // 监听来自新显示窗口的状态请求
-      _broadcastChannel.value.onmessage = (event) => {
-        if (event.data === 'request-state' && _lastBroadcastedData) {
-          console.log('[CONTROL] Received state request, replying with last known state.')
-          // 当收到请求时，强制发送一次带有视频同步信息的最后状态
-          const replyData = { ..._lastBroadcastedData }
-
-          // 重新计算 syncVideoToTime，因为 _lastBroadcastedData 中可能没有
-          if (replyData.videoConfig?.type === 'local' && replyData.videoConfig.startTimeOffset !== undefined) {
-            replyData.syncVideoToTime = Math.max(0, replyData.simulationTime - replyData.videoConfig.startTimeOffset)
-          }
-
-          _broadcastChannel.value?.postMessage(replyData)
-        }
-      }
-    }
   }
-
-  function formatTimeForClock(totalSeconds: number): string {
+  function formatTimeForClock(totalSeconds: number): string { /* ... 保持不变 ... */
     const abs = Math.abs(totalSeconds)
     const secs = totalSeconds < 0 ? Math.ceil(abs) : Math.floor(abs)
     const h = String(Math.floor(secs / 3600)).padStart(2, '0')
@@ -87,7 +75,6 @@ export const useControlStore = defineStore('control', () => {
     return `T ${sign} ${h}:${m}:${s}`
   }
 
-  // --- 关键修改点 2: 每次广播时缓存数据 ---
   function _updateAndBroadcast(options?: { forceVideoSync?: boolean }) {
     if (!_broadcastChannel.value || !missionData.value)
       return
@@ -99,6 +86,7 @@ export const useControlStore = defineStore('control', () => {
     }
 
     const rawMissionData = toRaw(missionData.value)
+    const info = activeDisplayInfo.value // 直接使用带定时器逻辑的 ref
 
     const telemetryObject: TelemetryData = {
       simulationTime: currentTimeOffset.value,
@@ -109,22 +97,50 @@ export const useControlStore = defineStore('control', () => {
       videoConfig: rawMissionData.videoConfig,
       syncVideoToTime: syncVideoToTimePayload,
       altitude_km: currentAltitude.value,
-      speed_kmh: rawMissionData.speed ?? 0,
+      speed_kmh: currentSpeed.value,
       timestamps: rawMissionData.events.map(e => e.time),
       nodeNames: rawMissionData.events.map(e => e.name),
       missionDuration: 2 * Math.max(...rawMissionData.events.map(e => Math.abs(e.time))),
-      maxQTitle: rawMissionData.maxQTitle ?? '',
-      maxQLine1: rawMissionData.maxQLine1 ?? '',
-      maxQLine2: rawMissionData.maxQLine2 ?? '',
-      maxQLine3: rawMissionData.maxQLine3 ?? '',
+      displayTitle: info.title ?? '',
+      displayLine1: info.line1 ?? '',
+      displayLine2: info.line2 ?? '',
+      displayLine3: info.line3 ?? '',
     }
 
-    // 发送并缓存
     _broadcastChannel.value.postMessage(telemetryObject)
-    _lastBroadcastedData = telemetryObject // 缓存最后发送的数据
   }
 
-  // 其他函数 (start, stop, etc.) 保持不变
+  // --- 关键修改点 2: 创建一个函数来检查并触发 displayInfo ---
+  let _lastCheckedDisplayInfoIndex = -1
+  function _checkAndTriggerDisplayInfo() {
+    const nodes = displayInfoNodes.value
+    if (nodes.length === 0)
+      return
+
+    // 寻找下一个应该检查的事件
+    const nextIndexToCheck = _lastCheckedDisplayInfoIndex + 1
+    if (nextIndexToCheck >= nodes.length)
+      return // 所有事件都检查过了
+
+    const nextNode = nodes[nextIndexToCheck]
+    if (currentTimeOffset.value >= nextNode!.time) {
+      // 触发！
+      activeDisplayInfo.value = nextNode!.displayInfo ?? {}
+
+      // 清除上一个定时器（如果有）
+      if (_displayInfoTimeoutId) {
+        clearTimeout(_displayInfoTimeoutId)
+      }
+
+      // 设置新的定时器来清空信息
+      _displayInfoTimeoutId = setTimeout(() => {
+        activeDisplayInfo.value = {}
+      }, DISPLAY_INFO_DURATION_MS)
+
+      // 更新检查点
+      _lastCheckedDisplayInfoIndex = nextIndexToCheck
+    }
+  }
 
   function _stopInternalTimer() {
     if (_timerIntervalId) {
@@ -143,6 +159,8 @@ export const useControlStore = defineStore('control', () => {
         return
       currentTimeOffset.value = (performance.now() - _targetT0TimestampMs) / 1000
       timerClock.value = formatTimeForClock(currentTimeOffset.value)
+
+      _checkAndTriggerDisplayInfo() // 在主循环中检查
       _updateAndBroadcast()
     }
     timerLoop()
@@ -161,7 +179,6 @@ export const useControlStore = defineStore('control', () => {
       isStarted.value = true; isPaused.value = false; _pauseTimeMs = null
       _targetT0TimestampMs = performance.now() - (currentTimeOffset.value * 1000)
       _startInternalTimer()
-      _updateAndBroadcast({ forceVideoSync: true }) // 开始时强制同步
     }
     else if (isPaused.value) {
       isPaused.value = false
@@ -169,16 +186,16 @@ export const useControlStore = defineStore('control', () => {
         _targetT0TimestampMs += performance.now() - _pauseTimeMs
       _pauseTimeMs = null
       _startInternalTimer()
-      _updateAndBroadcast() // 恢复时广播状态
     }
     else {
       isPaused.value = true
       _pauseTimeMs = performance.now()
       _stopInternalTimer()
-      _updateAndBroadcast() // 暂停时广播状态
     }
+    _updateAndBroadcast()
   }
 
+  // --- 关键修改点 3: 重置和跳转时，也要重置 displayInfo 状态 ---
   function resetSimulation() {
     _stopInternalTimer()
     isStarted.value = false
@@ -187,6 +204,13 @@ export const useControlStore = defineStore('control', () => {
     _pauseTimeMs = null
     currentTimeOffset.value = initialCountdownOffset.value
     timerClock.value = formatTimeForClock(currentTimeOffset.value)
+
+    // 重置 displayInfo 状态
+    activeDisplayInfo.value = {}
+    if (_displayInfoTimeoutId)
+      clearTimeout(_displayInfoTimeoutId)
+    _lastCheckedDisplayInfoIndex = -1 // 重置检查点
+
     _updateAndBroadcast({ forceVideoSync: true })
   }
 
@@ -195,6 +219,24 @@ export const useControlStore = defineStore('control', () => {
       return
     currentTimeOffset.value = targetSeconds
     timerClock.value = formatTimeForClock(targetSeconds)
+
+    // 重置并重新评估 displayInfo
+    activeDisplayInfo.value = {}
+    if (_displayInfoTimeoutId)
+      clearTimeout(_displayInfoTimeoutId)
+    _lastCheckedDisplayInfoIndex = -1
+
+    // 找到跳转时间点之前最后一个应该显示的info
+    for (let i = 0; i < displayInfoNodes.value.length; i++) {
+      if (displayInfoNodes.value[i]!.time <= targetSeconds) {
+        _lastCheckedDisplayInfoIndex = i
+      }
+      else {
+        break
+      }
+    }
+    // 注意：跳转时我们不主动显示信息，只设置检查点。信息将在下一次 _checkAndTriggerDisplayInfo 时触发。
+    // 如果希望跳转后立即显示信息，可以在这里设置 activeDisplayInfo.value，但不设置定时器。
 
     if (isStarted.value && !isPaused.value) {
       _stopInternalTimer()
@@ -207,12 +249,11 @@ export const useControlStore = defineStore('control', () => {
     _updateAndBroadcast({ forceVideoSync: true })
   }
 
-  function initialize() {
-    _initBroadcastChannel()
-  }
-
-  function dispose() {
+  function initialize() { /* ... 保持不变 ... */ _initBroadcastChannel() }
+  function dispose() { /* ... 保持不变 ... */
     _stopInternalTimer()
+    if (_displayInfoTimeoutId)
+      clearTimeout(_displayInfoTimeoutId)
     if (_broadcastChannel.value) {
       _broadcastChannel.value.close()
       _broadcastChannel.value = null
@@ -224,7 +265,7 @@ export const useControlStore = defineStore('control', () => {
     isPlaying: computed(() => isStarted.value && !isPaused.value),
     simulationTime: currentTimeOffset,
     altitude: currentAltitude,
-    speed: computed(() => missionData.value?.speed ?? 0),
+    speed: currentSpeed,
     loadMissionSequence,
     toggleLaunch,
     resetSimulation,

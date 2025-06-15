@@ -89,7 +89,7 @@ const showProgressEndTick = computed(() => props.maxValue !== 0 && progressValue
       <path v-if="redPartSweep > 0.01" :d="progressArcRedPath" class="stroke-red-500" fill="none" :stroke-width="STROKE_WIDTH" stroke-linecap="butt" :style="{ filter: `drop-shadow(0 0 3px rgb(239 68 68 / 0.7))` }" />
       <line v-if="showProgressStartTick" :x1="startTickInnerPoint.x" :y1="startTickInnerPoint.y" :x2="startTickOuterPoint.x" :y2="startTickOuterPoint.y" class="stroke-gray-100" :stroke-width="TICK_STROKE_WIDTH" stroke-linecap="butt" :style="{ filter: `drop-shadow(0 0 2px rgba(0,0,0,0.3))` }" />
       <line v-if="showProgressEndTick" :x1="endTickInnerPoint.x" :y1="endTickInnerPoint.y" :x2="endTickOuterPoint.x" :y2="endTickOuterPoint.y" class="stroke-red-500" :stroke-width="TICK_STROKE_WIDTH" stroke-linecap="butt" :style="{ filter: `drop-shadow(0 0 3px rgb(239 68 68 / 0.7))` }" />
-      <text :x="cx" :y="cy" text-anchor="middle" dominant-baseline="central" class="font-saira select-none fill-current">
+      <text :x="cx" :y="cy" text-anchor="middle" dominant-baseline="central" class="select-none fill-current font-saira">
         <tspan :x="cx" dy="-2.7em" class="text-12px text-gray-400 font-400">{{ props.label }}</tspan>
         <tspan :x="cx" :y="cy" class="text-42px text-white tabular-nums">{{ progressValue.toFixed(fractionDigits) }}</tspan>
         <tspan :x="cx" :y="cy" dy="2.7em" class="text-12px text-gray-400 font-400">{{ props.unit }}</tspan>

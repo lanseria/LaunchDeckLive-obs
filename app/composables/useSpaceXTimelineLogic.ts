@@ -7,7 +7,7 @@ export interface AltitudePoint {
 }
 
 export function useSpaceXTimelineLogic() {
-  const missionData = ref<SpaceXMissionSequenceFile | null>(null)
+  const missionData = ref<MissionSequenceFile | null>(null)
 
   const timerClock = ref('T - 00:00:00')
   const isStarted = ref(false)
@@ -15,7 +15,7 @@ export function useSpaceXTimelineLogic() {
   const currentTimeOffset = ref(0)
   const jumpTargetTimeRaw = ref<string | number>('')
 
-  const manualAltitude = computed(() => missionData.value?.altitude ?? 0)
+  const manualAltitude = ref(0)
   const altitudeProfile = useStorage<AltitudePoint[]>('spacex_altitude_profile_v2', [])
 
   function calculateAltitudeFromProfile(targetTime: number): number {
@@ -146,7 +146,7 @@ export function useSpaceXTimelineLogic() {
     }
   }
 
-  function loadMission(data: SpaceXMissionSequenceFile) {
+  function loadMission(data: MissionSequenceFile) {
     missionData.value = data
     resetCoreTimer()
   }

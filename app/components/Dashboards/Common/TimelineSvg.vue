@@ -113,7 +113,7 @@ function plotNodesOnCircle() {
 
   const safePastDensityFactor = Math.max(0.1, props.pastNodeDensityFactor ?? 1.0)
   const safeFutureDensityFactor = Math.max(0.1, props.futureNodeDensityFactor ?? 1.0)
-  const animationStartTime = -20
+  const animationStartTime = -8
   const animationDuration = 7
   const animationEndTime = animationStartTime + animationDuration
 
