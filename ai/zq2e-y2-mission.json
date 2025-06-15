@@ -1,0 +1,116 @@
+{
+  "missionName": "朱雀二号遥二任务 (模拟)",
+  "vehicle": "朱雀二号E",
+  "videoConfig": {
+    "type": "local",
+    "source": "/videos/zq2e-y2.mov",
+    "startTimeOffset": -45
+  },
+  "events": [
+    { 
+      "time": -300, 
+      "name": "人员撤离" 
+    },
+    { 
+      "time": -50, 
+      "name": "支撑臂收回" 
+    },
+    { 
+      "time": -10, 
+      "name": "启动" 
+    },
+    { 
+      "time": 0, 
+      "name": "起飞",
+      "telemetry": {
+        "speed_kmh": 0,
+        "altitude_km": 0
+      }
+    },
+    {
+      "time": 72,
+      "name": "MAX-Q",
+      "telemetry": {
+        "speed_kmh": 1850,
+        "altitude_km": 15.2
+      },
+      "displayInfo": {
+        "title": "MAX-Q",
+        "line1": "最大动压点",
+        "line2": "此刻箭体承受最大应力",
+        "line3": ""
+      }
+    },
+    { 
+      "time": 142, 
+      "name": "一级发动机关机",
+      "telemetry": {
+        "speed_kmh": 7500,
+        "altitude_km": 65.1
+      }
+    },
+    { 
+      "time": 145, 
+      "name": "级间分离面解锁" 
+    },
+    { 
+      "time": 193, 
+      "name": "抛整流罩",
+      "telemetry": {
+        "speed_kmh": 9800,
+        "altitude_km": 115.0
+      },
+      "displayInfo": {
+        "title": "整流罩分离",
+        "line1": "卫星暴露于太空环境",
+        "line2": "",
+        "line3": ""
+      }
+    },
+    { "time": 315, "name": "二级发动机100%-60%工况节流" },
+    { 
+      "time": 336, 
+      "name": "二级发动机一次关机",
+      "telemetry": {
+        "speed_kmh": 16500,
+        "altitude_km": 210.3
+      },
+      "displayInfo": {
+        "title": "二级发动机一次关机",
+        "line1": "进入停泊轨道",
+        "line2": "准备滑行阶段",
+        "line3": ""
+      }
+    },
+    { 
+      "time": 841, 
+      "name": "二级发动机60%工况二次点火",
+      "telemetry": {
+        "speed_kmh": 16450,
+        "altitude_km": 215.8
+      }
+    },
+    { 
+      "time": 863, 
+      "name": "二级发动机二次关机",
+      "telemetry": {
+        "speed_kmh": 27000,
+        "altitude_km": 450.0
+      },
+      "displayInfo": {
+        "title": "二级发动机二次关机",
+        "line1": "任务轨道达成",
+        "line2": "准备部署卫星",
+        "line3": ""
+      }
+    },
+    { 
+      "time": 957, 
+      "name": "星箭分离-1"
+    },
+    { 
+      "time": 1032, 
+      "name": "星箭分离-2" 
+    }
+  ]
+}

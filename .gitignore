@@ -8,5 +8,4 @@ dist
 .idea/
 public/assets/fonts
 public/videos/*
-*.json
 ai/project_context.txt
