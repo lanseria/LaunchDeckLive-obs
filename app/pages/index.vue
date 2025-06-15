@@ -19,7 +19,6 @@ function handleFileUpload(event: Event) {
           const content = e.target?.result
           if (typeof content === 'string') {
             const jsonData = JSON.parse(content)
-            // 基础校验
             if (jsonData && jsonData.missionName && jsonData.events) {
               controlStore.loadMissionSequence(jsonData)
             }
@@ -62,7 +61,7 @@ onUnmounted(controlStore.dispose)
 </script>
 
 <template>
-  <div class="font-sans p-4 md:p-8">
+  <div class="p-4 font-sans md:p-8">
     <div class="mb-6 flex items-center justify-between">
       <h1 class="text-2xl font-bold md:text-3xl">
         LaunchDeck - 控制面板
@@ -70,10 +69,11 @@ onUnmounted(controlStore.dispose)
       <DarkToggle />
     </div>
 
-    <div class="gap-8 grid grid-cols-1 lg:grid-cols-2">
+    <div class="grid grid-cols-1 gap-8 lg:grid-cols-2">
       <div class="flex flex-col space-y-6">
-        <div class="p-4 border border-gray-300 rounded dark:border-gray-600">
-          <h2 class="text-xl font-semibold mb-2">
+        <!-- 控制选项... -->
+        <div class="border border-gray-300 rounded p-4 dark:border-gray-600">
+          <h2 class="mb-2 text-xl font-semibold">
             任务时序
           </h2>
           <input type="file" accept=".json" class="mb-2" @change="handleFileUpload">
@@ -85,10 +85,10 @@ onUnmounted(controlStore.dispose)
           </div>
         </div>
 
-        <div class="gap-4 grid grid-cols-2">
+        <div class="grid grid-cols-2 gap-4">
           <button
             :disabled="!controlStore.missionData"
-            class="text-white px-4 py-2 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+            class="rounded px-4 py-2 text-white disabled:cursor-not-allowed disabled:opacity-50"
             :class="controlStore.isPlaying ? 'bg-yellow-500 hover:bg-yellow-600' : 'bg-green-500 hover:bg-green-600'"
             @click="controlStore.toggleLaunch"
           >
@@ -96,15 +96,15 @@ onUnmounted(controlStore.dispose)
           </button>
           <button
             :disabled="!controlStore.missionData"
-            class="text-white px-4 py-2 rounded bg-red-500 hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
+            class="rounded bg-red-500 px-4 py-2 text-white disabled:cursor-not-allowed hover:bg-red-600 disabled:opacity-50"
             @click="controlStore.resetSimulation"
           >
             重置
           </button>
         </div>
 
-        <div class="p-4 border border-gray-300 rounded dark:border-gray-600">
-          <h2 class="text-xl font-semibold mb-2">
+        <div class="border border-gray-300 rounded p-4 dark:border-gray-600">
+          <h2 class="mb-2 text-xl font-semibold">
             快速跳转 (MET)
           </h2>
           <div class="flex items-center space-x-2">
@@ -112,25 +112,25 @@ onUnmounted(controlStore.dispose)
               v-model="seekTimeInput"
               type="number"
               step="any"
-              class="text-gray-900 p-2 border border-gray-300 rounded bg-white flex-grow dark:text-gray-100 focus:outline-none dark:border-gray-600 dark:bg-gray-700"
+              class="flex-grow border border-gray-300 rounded bg-white p-2 text-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 focus:outline-none"
               placeholder="输入秒数 (例如 -10 或 120.5)"
               @keyup.enter="handleSeek"
             >
             <button
               :disabled="!controlStore.missionData"
-              class="text-white px-4 py-2 rounded bg-blue-500 hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+              class="rounded bg-blue-500 px-4 py-2 text-white disabled:cursor-not-allowed hover:bg-blue-600 disabled:opacity-50"
               @click="handleSeek"
             >
               跳转
             </button>
           </div>
-          <div v-if="seekError" class="text-sm text-red-500 mt-2">
+          <div v-if="seekError" class="mt-2 text-sm text-red-500">
             {{ seekError }}
           </div>
         </div>
 
-        <div class="p-4 border border-gray-300 rounded dark:border-gray-600">
-          <h2 class="text-xl font-semibold mb-2">
+        <div class="border border-gray-300 rounded p-4 dark:border-gray-600">
+          <h2 class="mb-2 text-xl font-semibold">
             当前模拟状态
           </h2>
           <p>状态: <span class="font-bold" :class="controlStore.isPlaying ? 'text-green-600' : 'text-red-600'">{{ controlStore.isPlaying ? '运行中' : '暂停/停止' }}</span></p>
@@ -143,14 +143,22 @@ onUnmounted(controlStore.dispose)
       <div class="flex flex-col space-y-4">
         <div class="flex items-center justify-between">
           <h2 class="text-xl font-semibold">
-            显示效果预览
+            显示效果预览 (已静音)
           </h2>
+          <!-- 关键修改点 2: 确保链接不带 mute 参数 -->
           <NuxtLink to="/control" target="_blank" class="text-sm text-blue-500 hover:underline">
-            在新窗口打开
+            在新窗口打开 (有声)
           </NuxtLink>
         </div>
-        <div class="rounded-lg bg-black w-full aspect-video shadow-lg relative overflow-hidden">
-          <iframe src="/control" title="Display Preview" frameborder="0" class="h-full w-full" />
+        <div class="relative aspect-video w-full overflow-hidden rounded-lg bg-black shadow-lg">
+          <!-- 关键修改点 1: iframe 的 src 添加 ?mute=1 -->
+          <iframe
+            src="/control?mute=1"
+            title="Display Preview"
+            frameborder="0"
+            class="h-full w-full"
+            allow="autoplay"
+          />
         </div>
       </div>
     </div>

@@ -9,6 +9,12 @@ const hasReceivedOnce = ref(false)
 const videoRef = useTemplateRef('videoRef')
 const showPlayButton = ref(false)
 
+// --- 新增：使用 useRoute 获取路由信息 ---
+const route = useRoute()
+
+// --- 新增：根据 URL 参数决定是否静音 ---
+const isMuted = computed(() => route.query.mute === '1')
+
 const currentDashboardComponent = shallowRef<any>(SpaceXFalcon9Dashboard)
 
 const isSeeking = ref(false)
@@ -195,6 +201,7 @@ watch(() => [
         ref="videoRef"
         key="launch-video"
         playsinline
+        :muted="isMuted"
         class="absolute left-0 top-0 z-0 h-full w-full object-cover"
         preload="auto"
         @loadedmetadata="() => {
