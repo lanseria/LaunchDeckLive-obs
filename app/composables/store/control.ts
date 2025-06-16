@@ -113,6 +113,17 @@ export const useControlStore = defineStore('control', () => {
     resetSimulation()
   }
 
+  // --- 新增一个 action ---
+  function updateEvents(newEventList: MissionEvent[]) {
+    if (missionData.value) {
+      missionData.value.events = newEventList
+      // 可选：更新后可以重置模拟，以确保所有计算属性都刷新
+      // resetSimulation();
+      // 或者只是广播一次状态
+      _updateAndBroadcast()
+    }
+  }
+
   function loadMissionSequence(data: MissionSequenceFile) {
     missionData.value = data
     // 加载新文件时，必须清空旧视频并要求用户重新选择
@@ -321,6 +332,7 @@ export const useControlStore = defineStore('control', () => {
 
   return {
     missionData,
+    updateEvents, // 暴露这个新的 action
     videoBlobUrl, // 暴露给UI
     isPlaying: computed(() => isStarted.value && !isPaused.value),
     simulationTime: currentTimeOffset,

@@ -6,6 +6,18 @@ const fileError = ref<string | null>(null)
 const seekTimeInput = ref<string>('')
 const seekError = ref<string | null>(null)
 
+// --- 新增：管理弹窗的显示状态 ---
+const isEditorModalOpen = ref(false)
+
+function openEditorModal() {
+  isEditorModalOpen.value = true
+}
+
+// --- 新增：处理弹窗保存事件的函数 ---
+function handleSaveEvents(newEventList: MissionEvent[]) {
+  controlStore.updateEvents(newEventList)
+}
+
 function handleMissionFileImport(event: Event) {
   const target = event.target as HTMLInputElement
   const file = target.files?.[0]
@@ -61,26 +73,6 @@ function handleSeek() {
   controlStore.seekSimulation(time)
 }
 
-function addEvent() {
-  controlStore.missionData?.events.push({ time: 0, name: '新事件' })
-}
-
-function deleteEvent(index: number) {
-  if (controlStore.missionData && controlStore.missionData.events.length > 1) {
-    controlStore.missionData.events.splice(index, 1)
-  }
-}
-
-// 确保可选对象存在以便 v-model 绑定
-function ensureTelemetry(event: MissionEvent) {
-  if (!event.telemetry)
-    event.telemetry = {}
-}
-function ensureDisplayInfo(event: MissionEvent) {
-  if (!event.displayInfo)
-    event.displayInfo = {}
-}
-
 onMounted(controlStore.initialize)
 onUnmounted(controlStore.dispose)
 </script>
@@ -133,7 +125,7 @@ onUnmounted(controlStore.dispose)
 
         <!-- 视频配置 -->
         <div class="border rounded-md p-4 space-y-4 dark:border-gray-600">
-          <h2 class="text-xl font-semibold">
+          <h2 class="mb-3 text-xl font-semibold">
             视频配置
           </h2>
           <label class="btn-primary w-full cursor-pointer text-center">
@@ -154,43 +146,8 @@ onUnmounted(controlStore.dispose)
           <h2 class="mb-3 text-xl font-semibold">
             事件序列
           </h2>
-          <div class="max-h-[50vh] overflow-y-auto pr-2 space-y-4">
-            <div v-for="(event, index) in controlStore.missionData.events" :key="index" class="border rounded-md bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-800/50">
-              <div class="flex items-center gap-2">
-                <input v-model.number="event.time" type="number" placeholder="时间(s)" class="input-field w-20">
-                <input v-model="event.name" type="text" placeholder="事件名称" class="input-field flex-grow">
-                <button class="btn-danger p-2" @click="deleteEvent(index)">
-                  ✕
-                </button>
-              </div>
-              <div class="mt-2 flex gap-2 text-xs">
-                <button class="btn-secondary" @click="ensureTelemetry(event)">
-                  {{ event.telemetry ? '编辑' : '添加' }}遥测
-                </button>
-                <button class="btn-secondary" @click="ensureDisplayInfo(event)">
-                  {{ event.displayInfo ? '编辑' : '添加' }}描述
-                </button>
-              </div>
-              <!-- 遥测数据编辑器 -->
-              <div v-if="event.telemetry" class="mt-2 rounded bg-gray-100 p-2 space-y-2 dark:bg-gray-900/50">
-                <div class="flex items-center gap-2 text-sm">
-                  <label>速度(km/h):</label> <input v-model.number="event.telemetry.speed_kmh" type="number" class="input-field w-full">
-                </div>
-                <div class="flex items-center gap-2 text-sm">
-                  <label>高度(km):</label> <input v-model.number="event.telemetry.altitude_km" type="number" step="0.1" class="input-field w-full">
-                </div>
-              </div>
-              <!-- 描述信息编辑器 -->
-              <div v-if="event.displayInfo" class="mt-2 rounded bg-gray-100 p-2 text-sm space-y-2 dark:bg-gray-900/50">
-                <input v-model="event.displayInfo.title" placeholder="标题" class="input-field w-full">
-                <input v-model="event.displayInfo.line1" placeholder="描述行 1" class="input-field w-full">
-                <input v-model="event.displayInfo.line2" placeholder="描述行 2" class="input-field w-full">
-                <input v-model="event.displayInfo.line3" placeholder="描述行 3" class="input-field w-full">
-              </div>
-            </div>
-          </div>
-          <button class="btn-primary mt-4 w-full" @click="addEvent">
-            添加新事件
+          <button class="btn-primary" @click="openEditorModal">
+            编辑事件 ({{ controlStore.missionData.events.length }}个)
           </button>
         </div>
       </div>
@@ -248,6 +205,14 @@ onUnmounted(controlStore.dispose)
         </div>
       </div>
     </div>
+
+    <!-- 关键修改点: 在模板中条件性地渲染弹窗组件 -->
+    <MissionEditorModal
+      v-if="isEditorModalOpen && controlStore.missionData"
+      :initial-events="controlStore.missionData.events"
+      @close="isEditorModalOpen = false"
+      @save="handleSaveEvents"
+    />
   </div>
 </template>
 
