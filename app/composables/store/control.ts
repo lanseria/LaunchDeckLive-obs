@@ -1,33 +1,28 @@
 import { LAUNCHDECK_CHANNEL_NAME } from '../utils/constants'
+import { defaultFalcon9Mission } from './default-mission'
 
 export const useControlStore = defineStore('control', () => {
   // --- 核心状态 ---
   const missionData = ref<MissionSequenceFile | null>(null)
+  const videoBlobUrl = ref<string | null>(null) // 新增：存储视频的 blob URL
   const timerClock = ref('T - 00:00:00')
   const isStarted = ref(false)
   const isPaused = ref(false)
   const currentTimeOffset = ref(0)
 
-  // --- 私有计时器和通信变量 ---
+  // (其他私有变量和计算属性保持不变)
   let _timerIntervalId: ReturnType<typeof setInterval> | null = null
   let _targetT0TimestampMs: number | null = null
   let _pauseTimeMs: number | null = null
   const _broadcastChannel = ref<BroadcastChannel | null>(null)
-
-  // --- 关键修改点 1: 新增状态和定时器ID来管理临时显示信息 ---
   const activeDisplayInfo = ref<EventDisplayInfo>({})
   let _displayInfoTimeoutId: ReturnType<typeof setTimeout> | null = null
-  const DISPLAY_INFO_DURATION_MS = 5000 // 信息显示 5 秒
+  const DISPLAY_INFO_DURATION_MS = 5000
+  let _lastCheckedDisplayInfoIndex = -1
+  const telemetryNodes = computed(() => missionData.value?.events.filter(e => e.telemetry).sort((a, b) => a.time - b.time) ?? [])
+  const displayInfoNodes = computed(() => missionData.value?.events.filter(e => e.displayInfo).sort((a, b) => a.time - b.time) ?? [])
 
-  // --- 计算属性 ---
-  const telemetryNodes = computed(() =>
-    missionData.value?.events.filter(e => e.telemetry).sort((a, b) => a.time - b.time) ?? [],
-  )
-
-  // 这个计算属性不再直接用于广播，而是用于检测
-  const displayInfoNodes = computed(() =>
-    missionData.value?.events.filter(e => e.displayInfo).sort((a, b) => a.time - b.time) ?? [],
-  )
+  // --- 逻辑函数 ---
 
   const getInterpolatedValue = (nodes: MissionEvent[], valueKey: 'speed_kmh' | 'altitude_km'): number => {
     if (nodes.length === 0)
@@ -49,23 +44,9 @@ export const useControlStore = defineStore('control', () => {
     }
     return nodes[nodes.length - 1]!.telemetry![valueKey] ?? 0
   }
-
   const currentAltitude = computed(() => getInterpolatedValue(telemetryNodes.value, 'altitude_km'))
   const currentSpeed = computed(() => getInterpolatedValue(telemetryNodes.value, 'speed_kmh'))
-
-  const initialCountdownOffset = computed(() => {
-    if (missionData.value?.videoConfig?.type === 'local' && missionData.value.videoConfig.startTimeOffset !== undefined)
-      return missionData.value.videoConfig.startTimeOffset
-    const firstNegativeEventTime = missionData.value?.events.find(e => e.time < 0)?.time
-    return firstNegativeEventTime ?? -60
-  })
-
-  // --- 核心方法 ---
-  function _initBroadcastChannel() { /* ... 保持不变 ... */
-    if (import.meta.client && !_broadcastChannel.value)
-      _broadcastChannel.value = new BroadcastChannel(LAUNCHDECK_CHANNEL_NAME)
-  }
-  function formatTimeForClock(totalSeconds: number): string { /* ... 保持不变 ... */
+  function formatTimeForClock(totalSeconds: number): string {
     const abs = Math.abs(totalSeconds)
     const secs = totalSeconds < 0 ? Math.ceil(abs) : Math.floor(abs)
     const h = String(Math.floor(secs / 3600)).padStart(2, '0')
@@ -75,18 +56,28 @@ export const useControlStore = defineStore('control', () => {
     return `T ${sign} ${h}:${m}:${s}`
   }
 
+  // 更新 _updateAndBroadcast 以使用 videoBlobUrl
   function _updateAndBroadcast(options?: { forceVideoSync?: boolean }) {
     if (!_broadcastChannel.value || !missionData.value)
       return
 
+    // 动态构建 videoConfig 用于广播
+    const dynamicVideoConfig: VideoConfig | undefined = videoBlobUrl.value
+      ? {
+          type: 'local',
+          source: videoBlobUrl.value,
+          startTimeOffset: missionData.value.videoConfig?.startTimeOffset ?? 0,
+        }
+      : undefined
+
     let syncVideoToTimePayload: number | undefined
-    if (options?.forceVideoSync && missionData.value.videoConfig?.type === 'local') {
-      const offset = missionData.value.videoConfig.startTimeOffset || 0
+    if (options?.forceVideoSync && dynamicVideoConfig) {
+      const offset = dynamicVideoConfig.startTimeOffset || 0
       syncVideoToTimePayload = Math.max(0, currentTimeOffset.value - offset)
     }
 
     const rawMissionData = toRaw(missionData.value)
-    const info = activeDisplayInfo.value // 直接使用带定时器逻辑的 ref
+    const info = activeDisplayInfo.value
 
     const telemetryObject: TelemetryData = {
       simulationTime: currentTimeOffset.value,
@@ -94,7 +85,7 @@ export const useControlStore = defineStore('control', () => {
       isPlaying: isStarted.value && !isPaused.value,
       missionName: rawMissionData.missionName,
       vehicleName: rawMissionData.vehicle,
-      videoConfig: rawMissionData.videoConfig,
+      videoConfig: dynamicVideoConfig, // 使用动态构建的 videoConfig
       syncVideoToTime: syncVideoToTimePayload,
       altitude_km: currentAltitude.value,
       speed_kmh: currentSpeed.value,
@@ -110,8 +101,82 @@ export const useControlStore = defineStore('control', () => {
     _broadcastChannel.value.postMessage(telemetryObject)
   }
 
-  // --- 关键修改点 2: 创建一个函数来检查并触发 displayInfo ---
-  let _lastCheckedDisplayInfoIndex = -1
+  // --- 新增/修改的公共函数 ---
+  function loadDefaultMission() {
+    // 使用深拷贝加载默认数据
+    missionData.value = JSON.parse(JSON.stringify(defaultFalcon9Mission))
+    // 重置视频
+    if (videoBlobUrl.value) {
+      URL.revokeObjectURL(videoBlobUrl.value)
+      videoBlobUrl.value = null
+    }
+    resetSimulation()
+  }
+
+  function loadMissionSequence(data: MissionSequenceFile) {
+    missionData.value = data
+    // 加载新文件时，必须清空旧视频并要求用户重新选择
+    if (videoBlobUrl.value) {
+      URL.revokeObjectURL(videoBlobUrl.value)
+      videoBlobUrl.value = null
+    }
+    resetSimulation()
+  }
+
+  function setVideoFile(file: File) {
+    // 清理上一个 blob URL 防止内存泄漏
+    if (videoBlobUrl.value) {
+      URL.revokeObjectURL(videoBlobUrl.value)
+    }
+    videoBlobUrl.value = URL.createObjectURL(file)
+    // 设置视频后，强制广播一次状态，让预览窗口能加载视频
+    _updateAndBroadcast({ forceVideoSync: true })
+  }
+
+  function exportMission() {
+    if (!missionData.value)
+      return
+
+    // 创建一个干净的副本用于导出
+    const missionToExport = JSON.parse(JSON.stringify(toRaw(missionData.value)))
+
+    // 移除 videoConfig，因为 blob URL 是临时的
+    // 或者可以保留 startTimeOffset
+    if (missionToExport.videoConfig) {
+      delete missionToExport.videoConfig.source
+      delete missionToExport.videoConfig.type
+      // 如果 videoConfig 只剩下 startTimeOffset，可以保留，否则整个删除
+      if (Object.keys(missionToExport.videoConfig).length === 0) {
+        delete missionToExport.videoConfig
+      }
+    }
+
+    const jsonString = JSON.stringify(missionToExport, null, 2)
+    const blob = new Blob([jsonString], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${missionToExport.missionName.replace(/\s/g, '_') || 'mission'}.json`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }
+
+  // initialize 函数中加载默认数据
+  function initialize() {
+    _initBroadcastChannel()
+    if (!missionData.value) { // 仅在首次初始化时加载
+      loadDefaultMission()
+    }
+  }
+
+  // (其他所有函数保持不变)
+  const initialCountdownOffset = computed(() => (missionData.value?.videoConfig?.startTimeOffset) ?? -10) // 默认为 -10
+  function _initBroadcastChannel() {
+    if (import.meta.client && !_broadcastChannel.value)
+      _broadcastChannel.value = new BroadcastChannel(LAUNCHDECK_CHANNEL_NAME)
+  }
   function _checkAndTriggerDisplayInfo() {
     const nodes = displayInfoNodes.value
     if (nodes.length === 0)
@@ -165,11 +230,6 @@ export const useControlStore = defineStore('control', () => {
     }
     timerLoop()
     _timerIntervalId = setInterval(timerLoop, 50)
-  }
-
-  function loadMissionSequence(data: MissionSequenceFile) {
-    missionData.value = data
-    resetSimulation()
   }
 
   function toggleLaunch() {
@@ -249,8 +309,7 @@ export const useControlStore = defineStore('control', () => {
     _updateAndBroadcast({ forceVideoSync: true })
   }
 
-  function initialize() { /* ... 保持不变 ... */ _initBroadcastChannel() }
-  function dispose() { /* ... 保持不变 ... */
+  function dispose() {
     _stopInternalTimer()
     if (_displayInfoTimeoutId)
       clearTimeout(_displayInfoTimeoutId)
@@ -262,11 +321,14 @@ export const useControlStore = defineStore('control', () => {
 
   return {
     missionData,
+    videoBlobUrl, // 暴露给UI
     isPlaying: computed(() => isStarted.value && !isPaused.value),
     simulationTime: currentTimeOffset,
     altitude: currentAltitude,
     speed: currentSpeed,
     loadMissionSequence,
+    setVideoFile, // 暴露给UI
+    exportMission, // 暴露给UI
     toggleLaunch,
     resetSimulation,
     seekSimulation,
