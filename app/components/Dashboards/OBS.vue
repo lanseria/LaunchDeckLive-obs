@@ -24,9 +24,16 @@ function formatTimeForClock(totalSeconds: number): string {
 const timerClock = computed(() => formatTimeForClock(props.simulationTime))
 const timestamps = computed(() => props.events.map(e => e.time))
 const nodeNames = computed(() => props.events.map(e => e.name))
+// --- 关键逻辑修改 ---
 const missionDuration = computed(() => {
+  // 1. 优先使用从配置中传入的时长
+  if (props.timelineConfig?.missionDuration && props.timelineConfig.missionDuration > 0)
+    return props.timelineConfig.missionDuration
+
+  // 2. 如果未配置，则回退到根据事件自动计算
   if (timestamps.value.length === 0)
-    return 600
+    return 600 // 最终回退的默认值
+
   return 2 * Math.max(...timestamps.value.map(e => Math.abs(e)))
 })
 </script>
@@ -43,7 +50,6 @@ const missionDuration = computed(() => {
       </div>
     </div>
 
-    <!-- Timeline SVG -->
     <TimelineSvg
       v-if="events.length > 0"
       class="fixed bottom-0 left-1/2 z-30 -translate-x-1/2"
@@ -51,7 +57,10 @@ const missionDuration = computed(() => {
       :node-names="nodeNames"
       :mission-duration="missionDuration"
       :current-time-offset="simulationTime"
-      v-bind="timelineConfig"
+      :svg-width="1920"
+      :svg-height="200"
+      :past-node-density-factor="timelineConfig?.pastNodeDensityFactor"
+      :future-node-density-factor="timelineConfig?.futureNodeDensityFactor"
     />
   </div>
 </template>

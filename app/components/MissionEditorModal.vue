@@ -54,7 +54,7 @@ function handleClose() {
 
 <template>
   <Teleport to="body">
-    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm" @click.self="handleClose">
+    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
       <div class="m-4 max-w-2xl w-full flex flex-col rounded-lg bg-white shadow-xl dark:bg-gray-800">
         <!-- 弹窗头部 -->
         <div class="flex items-center justify-between border-b p-4 dark:border-gray-700">

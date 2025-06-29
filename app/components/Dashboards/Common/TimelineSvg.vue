@@ -12,7 +12,7 @@ const props = defineProps<{
 
 const svgEl = useTemplateRef<SVGSVGElement>('svgEl')
 
-const effectiveSvgWidth = computed(() => props.svgWidth || 1200)
+const effectiveSvgWidth = computed(() => props.svgWidth || 3600)
 const effectiveSvgHeight = computed(() => props.svgHeight || 200)
 
 const exposedArcAngleDeg = 64

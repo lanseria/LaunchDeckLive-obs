@@ -1,13 +1,5 @@
-// --- File: app/components/TimelineEditorModal.vue ---
 <script setup lang="ts">
-// 定义 Timeline 配置的接口，与 props 保持一致
-interface TimelineConfig {
-  svgWidth: number
-  svgHeight: number
-  pastNodeDensityFactor: number
-  futureNodeDensityFactor: number
-}
-
+// 该组件将隐式使用全局定义的 TimelineConfig 类型
 const props = defineProps<{
   initialConfig: TimelineConfig
 }>()
@@ -17,7 +9,6 @@ const emit = defineEmits<{
   (e: 'save', config: TimelineConfig): void
 }>()
 
-// 创建一个本地的、可编辑的配置副本
 const editableConfig = ref<TimelineConfig>(JSON.parse(JSON.stringify(props.initialConfig)))
 
 function handleSave() {
@@ -32,7 +23,7 @@ function handleClose() {
 
 <template>
   <Teleport to="body">
-    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm" @click.self="handleClose">
+    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
       <div class="m-4 max-w-lg w-full flex flex-col rounded-lg bg-white shadow-xl dark:bg-gray-800">
         <!-- 弹窗头部 -->
         <div class="flex items-center justify-between border-b p-4 dark:border-gray-700">
@@ -46,20 +37,16 @@ function handleClose() {
 
         <!-- 内容区 -->
         <div class="p-4 space-y-4">
+          <!-- 新增: 时间轴总时长 -->
           <div>
-            <label class="font-medium">SVG 宽度 (px)</label>
+            <label class="font-medium">时间轴总时长 (秒)</label>
             <p class="text-xs text-gray-500 dark:text-gray-400">
-              整个时间轴组件的渲染宽度。
+              定义时间轴的显示范围。例如，填入 1200 会让时间轴大致表示 T-600s 到 T+600s 的范围。
             </p>
-            <input v-model.number="editableConfig.svgWidth" type="number" class="input-field w-full">
+            <input v-model.number="editableConfig.missionDuration" type="number" step="60" class="input-field w-full">
           </div>
-          <div>
-            <label class="font-medium">SVG 高度 (px)</label>
-            <p class="text-xs text-gray-500 dark:text-gray-400">
-              时间轴可见区域的高度。
-            </p>
-            <input v-model.number="editableConfig.svgHeight" type="number" class="input-field w-full">
-          </div>
+          <!-- 移除: svgWidth 和 svgHeight -->
+
           <div>
             <label class="font-medium">过去节点密度因子</label>
             <p class="text-xs text-gray-500 dark:text-gray-400">
@@ -91,7 +78,7 @@ function handleClose() {
 </template>
 
 <style scoped>
-/* 复用样式 */
+/* 样式保持不变 */
 .input-field {
   @apply block w-full px-3 py-1.5 text-base font-normal text-gray-700 bg-white bg-clip-padding border border-solid border-gray-300 rounded transition ease-in-out m-0 focus:text-gray-700 focus:bg-white focus:border-blue-600 focus:outline-none dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600;
 }

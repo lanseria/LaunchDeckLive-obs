@@ -66,8 +66,7 @@ declare global {
 
 // 新增：时间轴配置类型
 interface TimelineConfig {
-  svgWidth: number
-  svgHeight: number
+  missionDuration?: number // 新增：时间轴总时长，设为可选以兼容旧配置
   pastNodeDensityFactor: number
   futureNodeDensityFactor: number
 }

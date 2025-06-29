@@ -3,8 +3,7 @@ import type { H3Event } from 'h3'
 
 // 新增：在这里也定义接口，确保前后端一致
 export interface TimelineConfig {
-  svgWidth: number
-  svgHeight: number
+  missionDuration?: number
   pastNodeDensityFactor: number
   futureNodeDensityFactor: number
 }
@@ -33,8 +32,7 @@ const defaultState: OBSConfig = {
   ],
   // 新增：提供默认的时间轴配置
   timelineConfig: {
-    svgWidth: 1920,
-    svgHeight: 200,
+    missionDuration: 3600, // 新增: 提供一个默认总时长，例如 3600s (T-600 到 T+600)
     pastNodeDensityFactor: 3,
     futureNodeDensityFactor: 1,
   },

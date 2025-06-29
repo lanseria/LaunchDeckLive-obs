@@ -24,8 +24,7 @@ function getDefaultConfig(): OBSConfig {
     ],
     // 关键: 在这里也提供默认值
     timelineConfig: {
-      svgWidth: 1920,
-      svgHeight: 200,
+      missionDuration: 3600,
       pastNodeDensityFactor: 3,
       futureNodeDensityFactor: 1,
     },
