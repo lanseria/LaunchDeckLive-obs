@@ -64,4 +64,14 @@ declare global {
   }
 }
 
+// 新增 OBS 配置类型
+interface OBSConfig {
+  missionName: string // 新增
+  vehicle: string // 新增
+  launchTime: string // ISO 8601
+  timeZone: string
+  msOffset: number
+  events: { time: number, name: string }[]
+}
+
 export {}
