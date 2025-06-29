@@ -8,30 +8,21 @@ on:
     branches:
       - obs-ui-only
 
-# 环境变量：定义镜像名称和仓库地址
-# GHCR_REGISTRY: ghcr.io
-# IMAGE_NAME: 您的GitHub用户名或组织名/仓库名
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
   build-and-push:
-    # 运行此作业的虚拟机环境
     runs-on: ubuntu-latest
-
-    # 为此作业设置权限，允许从仓库读取内容并向GitHub Packages写入
     permissions:
       contents: read
       packages: write
 
     steps:
-      # 步骤 1: 检出（下载）您的仓库代码到虚拟机中
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 步骤 2: 登录到 GitHub Container Registry (GHCR)
-      # 使用自动生成的 GITHUB_TOKEN 进行身份验证
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
         with:
@@ -39,8 +30,11 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # 步骤 3: 提取 Docker 镜像的元数据（如标签）
-      # 这会自动创建标签，例如 'latest' 和基于 Git commit SHA 的标签
+      # 新增：设置 Docker Buildx，解决缓存驱动问题
+      # 这一步会创建一个使用 "docker-container" 驱动的 builder，它支持缓存导出。
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       - name: Extract Docker metadata
         id: meta
         uses: docker/metadata-action@v5
@@ -54,12 +48,6 @@ jobs:
             type=semver,pattern={{major}}.{{minor}}
             type=sha
 
-      # 步骤 4: 构建 Docker 镜像并将其推送到 GHCR
-      # - context: . 表示 Dockerfile 的上下文是仓库根目录
-      # - push: true 表示构建成功后推送镜像
-      # - tags: 使用上一步生成的标签
-      # - labels: 添加 OCI 标准标签，增加镜像的可追溯性
-      # - cache-from/to: 启用 GitHub Actions 的构建缓存，加快后续构建速度
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
