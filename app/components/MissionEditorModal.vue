@@ -1,26 +1,30 @@
+<!-- eslint-disable no-alert -->
+<!-- File: app/components/MissionEditorModal.vue  -->
 <script setup lang="ts">
 // 定义 props 和 emits
 const props = defineProps<{
+  // 这里的 MissionEvent 类型是全局的，包含可选的 telemetry 和 displayInfo
+  // 但我们在这个组件里不使用它们，这没有问题。
   initialEvents: MissionEvent[]
 }>()
 
 const emit = defineEmits<{
   (e: 'close'): void
+  // 保存时，我们只传递事件的核心部分，或者传递完整的事件对象，由父组件决定如何处理
   (e: 'save', events: MissionEvent[]): void
 }>()
 
 // --- 核心逻辑：深度拷贝 props 到本地状态 ---
-// ref() 会自动进行深层响应式处理
 const editableEvents = ref<MissionEvent[]>([])
 
-// 使用 watch 来响应 props 的变化，确保每次打开弹窗都加载最新的数据
 watch(() => props.initialEvents, (newEvents) => {
-  // 使用 JSON.parse(JSON.stringify(...)) 是一个简单可靠的深拷贝方法
+  // 深拷贝仍然是必要的，以防止直接修改 prop
   editableEvents.value = JSON.parse(JSON.stringify(newEvents))
 }, { immediate: true, deep: true })
 
 // --- 编辑器内部操作 ---
 function addEvent() {
+  // 只添加核心字段
   editableEvents.value.push({ time: 0, name: '新事件' })
 }
 
@@ -29,24 +33,16 @@ function deleteEvent(index: number) {
     editableEvents.value.splice(index, 1)
   }
   else {
-    // 可以给用户一个提示，至少需要一个事件
     alert('至少需要保留一个事件节点。')
   }
 }
 
-// 确保可选对象存在以便 v-model 绑定
-function ensureTelemetry(event: MissionEvent) {
-  if (!event.telemetry)
-    event.telemetry = {}
-}
-function ensureDisplayInfo(event: MissionEvent) {
-  if (!event.displayInfo)
-    event.displayInfo = {}
-}
+// 移除了 ensureTelemetry 和 ensureDisplayInfo 函数
 
 // --- 保存和关闭 ---
 function handleSave() {
   // 通过 emit 将修改后的数据副本传回给父组件
+  // 即使 editableEvents 包含空的 telemetry/displayInfo, 父组件在接收时会正确处理
   emit('save', editableEvents.value)
   emit('close')
 }
@@ -57,7 +53,6 @@ function handleClose() {
 </script>
 
 <template>
-  <!-- 使用 Teleport 将弹窗渲染到 body 的顶层，避免 z-index 问题 -->
   <Teleport to="body">
     <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm" @click.self="handleClose">
       <div class="m-4 max-w-2xl w-full flex flex-col rounded-lg bg-white shadow-xl dark:bg-gray-800">
@@ -81,30 +76,7 @@ function handleClose() {
                 ✕
               </button>
             </div>
-            <div class="mt-2 flex gap-2 text-xs">
-              <button class="btn-secondary" @click="ensureTelemetry(event)">
-                {{ event.telemetry ? '编辑' : '添加' }}遥测
-              </button>
-              <button class="btn-secondary" @click="ensureDisplayInfo(event)">
-                {{ event.displayInfo ? '编辑' : '添加' }}描述
-              </button>
-            </div>
-            <!-- 遥测数据编辑器 -->
-            <div v-if="event.telemetry" class="mt-2 rounded bg-gray-100 p-2 space-y-2 dark:bg-gray-700/50">
-              <div class="flex items-center gap-2 text-sm">
-                <label>速度(km/h):</label> <input v-model.number="event.telemetry.speed_kmh" type="number" class="input-field w-full">
-              </div>
-              <div class="flex items-center gap-2 text-sm">
-                <label>高度(km):</label> <input v-model.number="event.telemetry.altitude_km" type="number" step="0.1" class="input-field w-full">
-              </div>
-            </div>
-            <!-- 描述信息编辑器 -->
-            <div v-if="event.displayInfo" class="mt-2 rounded bg-gray-100 p-2 text-sm space-y-2 dark:bg-gray-700/50">
-              <input v-model="event.displayInfo.title" placeholder="标题" class="input-field w-full">
-              <input v-model="event.displayInfo.line1" placeholder="描述行 1" class="input-field w-full">
-              <input v-model="event.displayInfo.line2" placeholder="描述行 2" class="input-field w-full">
-              <input v-model="event.displayInfo.line3" placeholder="描述行 3" class="input-field w-full">
-            </div>
+            <!-- 移除了遥测和描述相关的按钮和编辑区域 -->
           </div>
           <button class="btn-primary w-full" @click="addEvent">
             添加新事件
@@ -126,7 +98,7 @@ function handleClose() {
 </template>
 
 <style scoped>
-/* 偷懒复用 index.vue 的样式，或者在这里定义独立的样式 */
+/* 样式保持不变 */
 .input-field {
   @apply block w-full px-3 py-1.5 text-base font-normal text-gray-700 bg-white bg-clip-padding border border-solid border-gray-300 rounded transition ease-in-out m-0 focus:text-gray-700 focus:bg-white focus:border-blue-600 focus:outline-none dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600;
 }
@@ -137,6 +109,6 @@ function handleClose() {
   @apply px-2 py-2 bg-red-600 text-white font-medium text-xs rounded hover:bg-red-700;
 }
 .btn-secondary {
-  @apply px-2 py-1 bg-gray-500 text-white font-medium text-xs rounded hover:bg-gray-600 transition;
+  @apply px-4 py-2 bg-gray-500 text-white font-medium text-sm rounded hover:bg-gray-600; /* 修改以匹配 obs-control 页面 */
 }
 </style>

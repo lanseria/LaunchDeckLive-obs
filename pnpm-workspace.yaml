@@ -28,12 +28,11 @@ catalogs:
     '@iconify-json/carbon': ^1.2.10
     '@iconify-json/simple-icons': ^1.2.40
     '@iconify-json/twemoji': ^1.2.2
-
+  utils:
+    '@nuxtjs/dayjs': ^1.4.1
+    '@types/node': ^24.0.7
+    dayjs-nuxt: ^2.1.11
+    es-toolkit: ^1.39.5
 onlyBuiltDependencies:
   - '@parcel/watcher'
   - esbuild
-catalog:
-  '@types/luxon': ^3.6.2
-  '@types/node': ^24.0.7
-  es-toolkit: ^1.39.5
-  luxon: ^3.6.1

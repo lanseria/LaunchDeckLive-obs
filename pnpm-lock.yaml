@@ -33,13 +33,6 @@ catalogs:
     unocss:
       specifier: ^66.3.2
       version: 66.3.2
-  default:
-    '@types/node':
-      specifier: ^24.0.7
-      version: 24.0.7
-    es-toolkit:
-      specifier: ^1.39.5
-      version: 1.39.5
   dev:
     '@antfu/eslint-config':
       specifier: ^4.16.1
@@ -76,6 +69,19 @@ catalogs:
     '@iconify-json/twemoji':
       specifier: ^1.2.2
       version: 1.2.2
+  utils:
+    '@nuxtjs/dayjs':
+      specifier: ^1.4.1
+      version: 1.4.1
+    '@types/node':
+      specifier: ^24.0.7
+      version: 24.0.7
+    dayjs-nuxt:
+      specifier: ^2.1.11
+      version: 2.1.11
+    es-toolkit:
+      specifier: ^1.39.5
+      version: 1.39.5
 
 overrides:
   '@nuxt/devtools': ^2.5.0
@@ -107,14 +113,14 @@ importers:
       '@nuxtjs/color-mode':
         specifier: catalog:build
         version: 3.5.2(magicast@0.3.5)
+      '@nuxtjs/dayjs':
+        specifier: catalog:utils
+        version: 1.4.1
       '@pinia/nuxt':
         specifier: catalog:build
         version: 0.11.1(magicast@0.3.5)(pinia@3.0.3(typescript@5.8.3)(vue@3.5.17(typescript@5.8.3)))
-      '@types/luxon':
-        specifier: ^3.6.2
-        version: 3.6.2
       '@types/node':
-        specifier: 'catalog:'
+        specifier: catalog:utils
         version: 24.0.7
       '@unocss/eslint-config':
         specifier: catalog:build
@@ -131,8 +137,11 @@ importers:
       '@vueuse/nuxt':
         specifier: catalog:build
         version: 13.4.0(magicast@0.3.5)(nuxt@3.17.5(@parcel/watcher@2.5.1)(@types/node@24.0.7)(db0@0.3.2)(eslint@9.30.0(jiti@2.4.2))(ioredis@5.6.1)(magicast@0.3.5)(optionator@0.9.4)(rollup@4.43.0)(terser@5.42.0)(typescript@5.8.3)(vite@6.3.5(@types/node@24.0.7)(jiti@2.4.2)(terser@5.42.0)(yaml@2.8.0))(vue-tsc@2.2.10(typescript@5.8.3))(yaml@2.8.0))(vue@3.5.17(typescript@5.8.3))
+      dayjs-nuxt:
+        specifier: catalog:utils
+        version: 2.1.11(magicast@0.3.5)
       es-toolkit:
-        specifier: 'catalog:'
+        specifier: catalog:utils
         version: 1.39.5
       eslint:
         specifier: catalog:dev
@@ -140,9 +149,6 @@ importers:
       eslint-plugin-format:
         specifier: catalog:dev
         version: 1.0.1(eslint@9.30.0(jiti@2.4.2))
-      luxon:
-        specifier: ^3.6.1
-        version: 3.6.1
       nuxt:
         specifier: catalog:build
         version: 3.17.5(@parcel/watcher@2.5.1)(@types/node@24.0.7)(db0@0.3.2)(eslint@9.30.0(jiti@2.4.2))(ioredis@5.6.1)(magicast@0.3.5)(optionator@0.9.4)(rollup@4.43.0)(terser@5.42.0)(typescript@5.8.3)(vite@6.3.5(@types/node@24.0.7)(jiti@2.4.2)(terser@5.42.0)(yaml@2.8.0))(vue-tsc@2.2.10(typescript@5.8.3))(yaml@2.8.0)
@@ -1232,6 +1238,9 @@ packages:
   '@nuxtjs/color-mode@3.5.2':
     resolution: {integrity: sha512-cC6RfgZh3guHBMLLjrBB2Uti5eUoGM9KyauOaYS9ETmxNWBMTvpgjvSiSJp1OFljIXPIqVTJ3xtJpSNZiO3ZaA==}
 
+  '@nuxtjs/dayjs@1.4.1':
+    resolution: {integrity: sha512-FgZoFqXxwRPoNJwcN3Up8jvxKnwalIZJF4rX5MWmMpJej75Rl/ShPKkkNxgf3x3gUopOyRjTCLRq/LAVFwY0Pg==}
+
   '@oxc-parser/binding-darwin-arm64@0.72.3':
     resolution: {integrity: sha512-g6wgcfL7At4wHNHutl0NmPZTAju+cUSmSX5WGUMyTJmozRzhx8E9a2KL4rTqNJPwEpbCFrgC29qX9f4fpDnUpA==}
     engines: {node: '>=14.0.0'}
@@ -1717,9 +1726,6 @@ packages:
 
   '@types/json-schema@7.0.15':
     resolution: {integrity: sha512-5+fP8P8MFNC+AyZCDxrB2pkZFPGzqQWUzpSeuuVLvm8VMcorNYavBqoFcxK8bQz4Qsbn4oUEEem4wDLfcysGHA==}
-
-  '@types/luxon@3.6.2':
-    resolution: {integrity: sha512-R/BdP7OxEMc44l2Ex5lSXHoIXTB2JLNa3y2QISIbr58U/YcsffyQrYW//hZSdrfxrjRZj3GcUoxMPGdO8gSYuw==}
 
   '@types/mdast@4.0.4':
     resolution: {integrity: sha512-kGaNbPh1k7AFzgpud/gMdvIm5xuECykRR+JnWKQno9TAXVa6WIVCGTPvYGekIDL4uwCZQSYbUxNBSb1aUo79oA==}
@@ -2638,6 +2644,9 @@ packages:
   confbox@0.2.2:
     resolution: {integrity: sha512-1NB+BKqhtNipMsov4xI/NnhCKp9XG9NamYp5PVm9klAT0fsrNPjaFICsCFhNhwZJKNh7zB/3q8qXz0E9oaMNtQ==}
 
+  consola@2.15.3:
+    resolution: {integrity: sha512-9vAdYbHj6x2fLKC4+oPH0kFzY/orMZyG2Aj+kNylHxKGJ/Ed4dpNyAQYwJOdqO4zdM7XpVHmyejQDcQHrnuXbw==}
+
   consola@3.4.2:
     resolution: {integrity: sha512-5IKcdX0nnYavi6G7TtOhwkYzyjfJlatbjMjuLSfE2kYT5pMDOilZ4OvMhi637CcDICTmz3wARPoyhqyX1Y+XvA==}
     engines: {node: ^14.18.0 || >=16.10.0}
@@ -2767,6 +2776,12 @@ packages:
   data-view-byte-offset@1.0.1:
     resolution: {integrity: sha512-BS8PfmtDGnrgYdOonGZQdLZslWIeCGFP9tpan0hi1Co2Zr2NKADsvGYA8XxuG/4UWgJ6Cjtv+YJnB6MM69QGlQ==}
     engines: {node: '>= 0.4'}
+
+  dayjs-nuxt@2.1.11:
+    resolution: {integrity: sha512-KDDNiET7KAKf6yzL3RaPWq5aV7ql9QTt5fIDYv+4eOegDmnEQGjwkKYADDystsKtPjt7QZerpVbhC96o3BIyqQ==}
+
+  dayjs@1.11.13:
+    resolution: {integrity: sha512-oaMBel6gjolK862uaPQOVTA7q3TZhuSvuMQAAglQDOWYO9A91IrAOUJEyKVlqJlHE0vq5p5UXxzdPfMH/x6xNg==}
 
   db0@0.3.2:
     resolution: {integrity: sha512-xzWNQ6jk/+NtdfLyXEipbX55dmDSeteLFt/ayF+wZUU5bzKgmrDOxmInUTbyVRp46YwnJdkDA1KhB7WIXFofJw==}
@@ -7589,6 +7604,11 @@ snapshots:
     transitivePeerDependencies:
       - magicast
 
+  '@nuxtjs/dayjs@1.4.1':
+    dependencies:
+      consola: 2.15.3
+      dayjs: 1.11.13
+
   '@oxc-parser/binding-darwin-arm64@0.72.3':
     optional: true
 
@@ -7958,8 +7978,6 @@ snapshots:
   '@types/estree@1.0.8': {}
 
   '@types/json-schema@7.0.15': {}
-
-  '@types/luxon@3.6.2': {}
 
   '@types/mdast@4.0.4':
     dependencies:
@@ -9128,6 +9146,8 @@ snapshots:
 
   confbox@0.2.2: {}
 
+  consola@2.15.3: {}
+
   consola@3.4.2: {}
 
   convert-source-map@2.0.0: {}
@@ -9278,6 +9298,15 @@ snapshots:
       call-bound: 1.0.4
       es-errors: 1.3.0
       is-data-view: 1.0.2
+
+  dayjs-nuxt@2.1.11(magicast@0.3.5):
+    dependencies:
+      '@nuxt/kit': 3.17.5(magicast@0.3.5)
+      dayjs: 1.11.13
+    transitivePeerDependencies:
+      - magicast
+
+  dayjs@1.11.13: {}
 
   db0@0.3.2: {}
 

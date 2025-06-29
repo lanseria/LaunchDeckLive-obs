@@ -64,14 +64,22 @@ declare global {
   }
 }
 
-// 新增 OBS 配置类型
+// 新增：时间轴配置类型
+interface TimelineConfig {
+  svgWidth: number
+  svgHeight: number
+  pastNodeDensityFactor: number
+  futureNodeDensityFactor: number
+}
+
+// 修改 OBSConfig
 interface OBSConfig {
-  missionName: string // 新增
-  vehicle: string // 新增
+  missionName: string
+  vehicle: string
   launchTime: string // ISO 8601
   timeZone: string
   msOffset: number
   events: { time: number, name: string }[]
+  timelineConfig?: TimelineConfig // 新增：设为可选以兼容旧配置文件
 }
-
 export {}

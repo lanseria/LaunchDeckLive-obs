@@ -9,6 +9,7 @@ export default defineNuxtConfig({
     '@nuxtjs/color-mode',
     '@nuxt/eslint',
     '@vite-pwa/nuxt',
+    'dayjs-nuxt',
   ],
   ssr: false,
 
@@ -74,6 +75,13 @@ export default defineNuxtConfig({
         'es-toolkit',
       ],
     },
+  },
+
+  dayjs: {
+    locales: ['zh'],
+    plugins: ['relativeTime', 'utc', 'timezone'],
+    defaultLocale: 'zh',
+    defaultTimezone: 'Asia/Shanghai',
   },
 
   eslint: {

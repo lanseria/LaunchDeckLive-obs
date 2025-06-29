@@ -1,20 +1,28 @@
 // server/utils/obsState.ts
 import type { H3Event } from 'h3'
 
-// 定义 OBS 配置的数据结构
+// 新增：在这里也定义接口，确保前后端一致
+export interface TimelineConfig {
+  svgWidth: number
+  svgHeight: number
+  pastNodeDensityFactor: number
+  futureNodeDensityFactor: number
+}
+
 export interface OBSConfig {
-  missionName: string // 新增
-  vehicle: string // 新增
+  missionName: string
+  vehicle: string
   launchTime: string
   timeZone: string
   msOffset: number
   events: { time: number, name: string }[]
+  timelineConfig?: TimelineConfig // 新增
 }
 
-// 默认状态
+// 默认状态中加入 timelineConfig
 const defaultState: OBSConfig = {
-  missionName: 'Starlink Mission (OBS)', // 新增
-  vehicle: 'Falcon 9', // 新增
+  missionName: 'Starlink Mission (OBS)',
+  vehicle: 'Falcon 9',
   launchTime: new Date().toISOString(),
   timeZone: 'Asia/Shanghai',
   msOffset: 0,
@@ -23,6 +31,13 @@ const defaultState: OBSConfig = {
     { time: 0, name: 'LIFTOFF' },
     { time: 145, name: 'MECO' },
   ],
+  // 新增：提供默认的时间轴配置
+  timelineConfig: {
+    svgWidth: 1920,
+    svgHeight: 200,
+    pastNodeDensityFactor: 3,
+    futureNodeDensityFactor: 1,
+  },
 }
 
 // 在内存中存储当前状态 (单例)
@@ -37,7 +52,6 @@ const sseConnections = new Set<H3Event>()
  */
 export function updateOBSState(newState: OBSConfig) {
   currentState = newState
-  // 向所有连接的客户端广播新状态
   broadcastState()
 }
 
@@ -71,11 +85,9 @@ export function broadcastState() {
  */
 export function addSSEConnection(event: H3Event) {
   sseConnections.add(event)
-  console.log(`[SSE] New connection. Total: ${sseConnections.size}`)
 
   // 当连接关闭时，从集合中移除
   event.node.res.on('close', () => {
     sseConnections.delete(event)
-    console.log(`[SSE] Connection closed. Total: ${sseConnections.size}`)
   })
 }
