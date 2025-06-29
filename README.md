@@ -157,6 +157,11 @@
     ```
     应用将在 `http://localhost:10630` 上运行。
 
+```
+docker run -d -p 10630:3000 --name launchdeck-app --restart always ghcr.io/lanseria/launchdeck-nuxt-app:sha-fbe024a
+6dfdb7c2a508d3d5baa8c089223a133914f5b2293c2a280b58014ee0a54f68d1
+```
+
 ---
 
 ### 目录结构概览
