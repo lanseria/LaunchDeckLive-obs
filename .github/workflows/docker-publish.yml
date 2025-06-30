@@ -2,11 +2,11 @@
 
 name: Docker Build and Push
 
-# 触发器：当有代码推送到 obs-ui-only 分支时运行此工作流
+# 触发器：当有代码推送到 main 分支时运行此工作流
 on:
   push:
     branches:
-      - obs-ui-only
+      - main
 
 env:
   REGISTRY: ghcr.io
