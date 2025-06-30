@@ -1,22 +1,7 @@
 // server/utils/obsState.ts
 import type { H3Event } from 'h3'
 
-// 新增：在这里也定义接口，确保前后端一致
-export interface TimelineConfig {
-  missionDuration?: number
-  pastNodeDensityFactor: number
-  futureNodeDensityFactor: number
-}
-
-export interface OBSConfig {
-  missionName: string
-  vehicle: string
-  launchTime: string
-  timeZone: string
-  msOffset: number
-  events: { time: number, name: string }[]
-  timelineConfig?: TimelineConfig // 新增
-}
+// 类型已在 'types/launchdeck.d.ts' 中全局定义，此处无需再定义
 
 // 默认状态中加入 timelineConfig
 const defaultState: OBSConfig = {
@@ -30,9 +15,8 @@ const defaultState: OBSConfig = {
     { time: 0, name: 'LIFTOFF' },
     { time: 145, name: 'MECO' },
   ],
-  // 新增：提供默认的时间轴配置
   timelineConfig: {
-    missionDuration: 3600, // 新增: 提供一个默认总时长，例如 3600s (T-600 到 T+600)
+    missionDuration: 3600,
     pastNodeDensityFactor: 3,
     futureNodeDensityFactor: 1,
   },

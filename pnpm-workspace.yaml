@@ -5,7 +5,6 @@ catalogs:
     '@nuxt/devtools': ^2.5.0
     '@nuxt/eslint': ^1.4.1
     '@nuxtjs/color-mode': ^3.5.2
-    '@pinia/nuxt': ^0.11.1
     '@unocss/eslint-config': ^66.3.2
     '@unocss/nuxt': ^66.3.2
     '@vite-pwa/nuxt': ^1.0.4
@@ -22,7 +21,6 @@ catalogs:
     vue-tsc: ^2.2.10
   frontend:
     '@vueuse/core': ^13.4.0
-    pinia: ^3.0.3
     vue: ^3.5.17
   icons:
     '@iconify-json/carbon': ^1.2.10
