@@ -66,7 +66,7 @@ pnpm start
 docker build -t launchdeck-live .
 
 # 2. 运行容器
-docker run -d -p 3000:3000 --name launchdeck-live-app launchdeck-live
+docker run -d -p 10630:3000 --name launchdeck-live-app launchdeck-live
 ```
 
 ## 📖 使用指南
