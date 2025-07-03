@@ -41,8 +41,7 @@ const errorMessage = ref('')
 const fileError = ref<string | null>(null)
 const timezones = ['Asia/Shanghai', 'UTC', 'America/New_York', 'Europe/London']
 const host = ref('')
-const bgColor = ref('#00FF00')
-const obsLink = computed(() => `${host.value}/obs-display?bg=${bgColor.value.replace('#', '')}`)
+const obsLink = computed(() => `${host.value}/obs-display`)
 const { copy, copied } = useClipboard({ source: obsLink, legacy: true })
 onMounted(() => {
   host.value = window.location.origin
@@ -263,7 +262,6 @@ function exportConfig() {
               :value="obsLink"
               readonly
             >
-            <input v-model="bgColor" type="color" class="h-9 w-10 cursor-pointer rounded-md border-none bg-transparent p-0">
             <button class="btn-primary" @click="copy()">
               {{ copied ? '已复制!' : '复制' }}
             </button>

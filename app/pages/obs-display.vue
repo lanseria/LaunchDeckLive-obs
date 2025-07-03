@@ -1,13 +1,10 @@
 <script setup lang="ts">
-import type { OBSConfig } from '~~/server/utils/obsState'
 import OBSDashboard from '~/components/Dashboards/OBS.vue'
 
 const dayjs = useDayjs()
 definePageMeta({
   layout: 'none',
 })
-const route = useRoute()
-const backgroundColor = computed(() => `#${(route.query.bg as string) || '00FF00'}`)
 const obsConfig = ref<OBSConfig | null>(null)
 const simulationTime = ref(0)
 let timerId: ReturnType<typeof setInterval> | null = null
@@ -53,7 +50,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="h-screen w-screen overflow-hidden" :style="{ backgroundColor }">
+  <div class="h-screen w-screen overflow-hidden">
     <Adapter v-if="obsConfig">
       <OBSDashboard
         :simulation-time="simulationTime"
